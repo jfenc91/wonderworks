@@ -7,6 +7,7 @@ import {canonical,createProposal,updateProposal,getProposal,editProposalRequirem
 import {toolMap} from './contracts';
 import {ToolError} from './errors';
 import type {McpStore} from '../../db/mcp-store';
+import {captureRequirementHistory,requirementHistory,requirementHistoryPage} from '../requirement-history';
 
 export type Actor={id:string;clientName?:string};
 export type Store=Pick<McpStore,'list'|'read'|'replay'|'commit'>;
@@ -71,7 +72,8 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
     const v=versions(doc);
     switch(name){
       case 'get_project':return {...v,id:doc.id,name:doc.name,prefix:doc.prefix,sections:doc.sections,repositories:doc.repositories??[]};
-      case 'get_requirement':return {...v,requirement:withTags(found(doc.requirements.find(r=>r.id===args.requirement_id),'Requirement'))};
+      case 'get_requirement':return {...v,requirement:withTags(found(doc.requirements.find(r=>r.id===args.requirement_id),'Requirement')),lifecycle:requirementHistory(doc,args.requirement_id).lifecycle,coverage:requirementHistory(doc,args.requirement_id).coverage};
+      case 'get_requirement_history':return requirementHistoryPage(doc,args.requirement_id,args);
       case 'get_snapshot':return {...v,snapshot:found(doc.baselines.find(b=>b.id===args.baseline_id),'Snapshot')};
       case 'get_proposal':return {...v,proposal:inspect(doc,found(doc.proposals?.find(p=>p.id===args.proposal_id),'Proposal'))};
       default:{
@@ -92,7 +94,7 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
   if(args.expected_workspace_version!==doc.version)throw new ToolError('CONFLICT','Workspace changed. Reload the project before making a new write.',{current_workspace_version:doc.version});
   const result:Record<string,unknown>={...versions(doc),workspace_version:doc.version+1,correlation_id:correlationId};
   let objectIds:string[]=[];
-  const history=structuredClone(doc.history);
+  const original=structuredClone(doc),history=structuredClone(doc.history);
   try{
     switch(name){
       case 'create_proposal':{const p=createProposal(doc,args);result.proposal_id=p.id;result.status=p.status;objectIds=[p.id];break;}
@@ -121,8 +123,9 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
   }
   // One attributable event per atomic write, including on a large staged batch.
   doc.history=history;
-  record(doc,`MCP ${name} · ${[...new Set(objectIds)].join(', ')}`);
+  record(doc,`MCP ${name} · ${[...new Set(objectIds)].join(', ')}`,name==='stage_proposal_changes'?objectIds.filter(id=>id!==args.proposal_id):undefined);
   doc.history[0].mcp={actorId:actor.id,...(actor.clientName?{clientName:actor.clientName}:{}),tool:name,projectId:doc.id,objectIds:[...new Set(objectIds)],correlationId};
+  captureRequirementHistory(original,doc,{source:name,actor:{id:actor.id,...(actor.clientName?{reportedClientName:actor.clientName}:{})}});
   definition.output.parse(result);
   return store.commit(doc,args.expected_workspace_version,{key,project:doc.id,fingerprint,result,expiresAt:now+24*60*60*1000},now);
 }

@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {Miniflare} from 'miniflare';
+import {McpStore} from '../db/mcp-store.ts';
+import {callTool} from '../lib/mcp/service.ts';
+import {captureRequirementHistory,requirementHistory} from '../lib/requirement-history.ts';
+import {submitProposal,reviewProposal} from '../lib/workflow.ts';
+test('real D1 rollback and worker replacement preserve creation and accepted events atomically',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'wonderworks-history-'));
+  const start=()=>new Miniflare({modules:true,script:'export default { fetch() { return new Response("test"); } }',compatibilityDate:'2026-05-15',d1Databases:{DB:'history-test'},d1Persist:dir});
+  let mf=start();
+  try{
+    let db=await mf.getD1Database('DB');
+    for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql'])for(const statement of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(statement).run();
+    const doc={id:'history-test',prefix:'HT',name:'History D1 QA',version:0,requirementsVersion:1,sections:[{id:'section',title:'Behavior',description:''}],requirements:[],baselines:[],evidence:[],history:[],proposals:[],repositories:[]};
+    await db.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,?)').bind(doc.id,JSON.stringify(doc),0).run();
+    let store=new McpStore(db);const actor={id:'authenticated-actor'};
+    await callTool(store,'create_proposal',{project_id:doc.id,expected_workspace_version:0,idempotency_key:'create-history-proposal',title:'History batch'},actor,'create');
+    const args={project_id:doc.id,proposal_id:'CP-001',expected_workspace_version:1,idempotency_key:'pending-history-addition',operations:[{op:'add',client_ref:'new',requirement:{section:'section',title:'Persist my creation',description:'Record and preserve creation provenance.',criteria:['Creation survives a worker restart.'],priority:'High',status:'Draft'}}]};
+    const before=await store.read(doc.id);
+    await db.prepare("CREATE TRIGGER fail_history BEFORE UPDATE ON workspaces BEGIN SELECT RAISE(ABORT, 'injected storage failure'); END").run();
+    await assert.rejects(()=>callTool(store,'stage_proposal_changes',args,actor,'failure'));assert.deepEqual(await store.read(doc.id),before);assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM mcp_receipts').first()).count,1);
+    await db.prepare('DROP TRIGGER fail_history').run();
+    const staged=await callTool(store,'stage_proposal_changes',args,actor,'saved'),creation=requirementHistory(await store.read(doc.id),'HT-001').lifecycle.created;
+    await mf.dispose();mf=start();db=await mf.getD1Database('DB');store=new McpStore(db);
+    assert.deepEqual(await callTool(store,'stage_proposal_changes',args,actor,'retry'),staged);assert.equal(requirementHistory(await store.read(doc.id),'HT-001').items.length,1);
+    const original=await store.read(doc.id),applied=structuredClone(original);submitProposal(applied,'CP-001');reviewProposal(applied,'CP-001',{decision:'apply',note:'Durable acceptance'});captureRequirementHistory(original,applied,{source:'proposal_review',actor});
+    const result={workspace_version:3},receipt={key:'apply-history',project:doc.id,fingerprint:'apply',result,expiresAt:Date.now()+3600000};
+    await db.prepare("CREATE TRIGGER fail_apply BEFORE UPDATE ON workspaces BEGIN SELECT RAISE(ABORT, 'injected acceptance failure'); END").run();
+    await assert.rejects(()=>store.commit(applied,2,receipt,Date.now()));assert.deepEqual(await store.read(doc.id),original);assert.equal(await store.replay(receipt.key,receipt.fingerprint,Date.now()),null);
+    await db.prepare('DROP TRIGGER fail_apply').run();await store.commit(applied,2,receipt,Date.now());
+    await mf.dispose();mf=start();db=await mf.getD1Database('DB');store=new McpStore(db);
+    const saved=await store.read(doc.id),history=requirementHistory(saved,'HT-001');assert.equal(saved.baselines.length,1);assert.equal(saved.proposals[0].status,'Applied');assert.equal(history.items.length,2);assert.deepEqual(history.lifecycle.created,creation);assert.equal(history.lifecycle.last_change_accepted.proposalId,'CP-001');assert.equal(history.lifecycle.last_change_accepted.snapshotId,'BL-001');assert.equal(history.lifecycle.first_approved.state,'not_recorded');
+    assert.deepEqual(await store.commit(applied,2,receipt,Date.now()),result);assert.equal(requirementHistory(await store.read(doc.id),'HT-001').items.length,2);
+    await assert.rejects(()=>store.commit(applied,2,{...receipt,key:'different-stale-save'},Date.now()),{code:'CONFLICT'});assert.deepEqual(await store.read(doc.id),saved);
+  }finally{await mf.dispose();await rm(dir,{recursive:true,force:true});}
+});

@@ -1,0 +1,99 @@
+{
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "proposal_id": "CP-003",
+  "baseline": "BL-004",
+  "baseline_date": "2026-10-04T03:13:08.828Z",
+  "requirements_version": 4,
+  "requirement_revisions": [
+    {
+      "id": "WW-013",
+      "revision": 2
+    },
+    {
+      "id": "WW-025",
+      "revision": 2
+    },
+    {
+      "id": "WW-052",
+      "revision": 1
+    },
+    {
+      "id": "WW-053",
+      "revision": 1
+    },
+    {
+      "id": "WW-054",
+      "revision": 1
+    },
+    {
+      "id": "WW-055",
+      "revision": 1
+    },
+    {
+      "id": "WW-056",
+      "revision": 1
+    },
+    {
+      "id": "WW-057",
+      "revision": 1
+    }
+  ],
+  "executed_at": "2026-10-04 04:09:17 UTC",
+  "summary": "CP-003 implementation verification: 55 automated checks passed, TypeScript validation and production build passed, plus browser verification at compact and desktop widths.",
+  "automated": {
+    "passed": 55,
+    "failed": 0,
+    "command": "node --import tsx --test test/requirement-history.test.mjs test/requirement-history-api.test.mjs test/requirement-history-store.test.mjs test/tagging.test.mjs test/tagging-api.test.mjs test/mcp-api.test.mjs test/mcp-store.test.mjs test/workflow-api.test.mjs"
+  },
+  "checks": [
+    {
+      "id": "WW-013",
+      "title": "Requirement inspection and lifecycle summary",
+      "passed": true,
+      "detail": "Browser: selected requirement retains context when history closes; lifecycle summary shows absolute zoned times with the recorded revision, and unknown legacy dates. Verified desktop inspector at 1440px and compact timeline at 390px."
+    },
+    {
+      "id": "WW-025",
+      "title": "Recent activity links to durable history",
+      "passed": true,
+      "detail": "Unit tests retained 105 events after 510 unrelated activity entries capped the recent feed at 500. Browser confirmed structured activity links including deleted requirement HQ-002. Legacy free-text entries remain unlinked."
+    },
+    {
+      "id": "WW-052",
+      "title": "Atomic durable change provenance",
+      "passed": true,
+      "detail": "Unit/API/D1 tests cover every editable field, original staged creation, atomic multi-requirement application, deletion, actual saved before/after values, trusted actors and reported client metadata, no-op saves, stale/invalid rejection, rollback and idempotent replay across worker replacement."
+    },
+    {
+      "id": "WW-053",
+      "title": "Distinct creation, acceptance and lifecycle milestones",
+      "passed": true,
+      "detail": "Tests cover initial Draft/Approved/Implemented, Draft→Approved→Draft→Approved, direct Implemented without invented approval, stable proposal-addition creation, acceptance independent of status, and later direct revisions retaining earlier milestone revision IDs."
+    },
+    {
+      "id": "WW-054",
+      "title": "Accessible timeline and historical navigation",
+      "passed": true,
+      "detail": "Browser: keyboard opening and diff expansion, proposal/snapshot navigation and repeat round-trip, deleted identity, complete and partial histories, empty legacy history, loading, 50→53 entry pagination, compact 390px layout, and successful Retry after an actual local service outage. Timeline shows historical values and review notes."
+    },
+    {
+      "id": "WW-055",
+      "title": "Legacy and import provenance without rewriting snapshots",
+      "passed": true,
+      "detail": "Tests verify pure repeated legacy reads, snapshot-only first-observed dates, unknown original lifecycle dates, preserved local events when imports omit or forge history, import revision gaps, unchanged frozen snapshots/evidence and metadata-only no-op revisions. No automatic historical-event recovery is attempted."
+    },
+    {
+      "id": "WW-056",
+      "title": "Read-only history across API and MCP",
+      "passed": true,
+      "detail": "Tests validate the 16-tool discovery catalog, get_requirement lifecycle output, matching REST/MCP history, deleted IDs, unknown IDs, bounded pagination, deterministic ordering, query-bound cursors, concurrent invalidation, forged write metadata and overlapping project IDs. Existing MCP authentication-rejection tests pass."
+    },
+    {
+      "id": "WW-057",
+      "title": "Executed requirement-linked verification",
+      "passed": true,
+      "detail": "55 automated checks passed with zero failures in the final suite; TypeScript and production build passed. UI checks ran against local preview and compiled Worker. D1 failures were deliberately injected and expected rejection/rollback was verified. Hosted OAuth audience/revocation behavior was not re-tested; existing hosting controls are unchanged."
+    }
+  ],
+  "verification_scope": "Implementation and tests cover CP-003 at BL-004. This report does not mark requirement lifecycle status Implemented, certify unrelated requirements, or claim automatic recovery of unavailable historical events."
+}

@@ -16,8 +16,8 @@ assert.ok(cookie);
 const client=new Client({name:'wonderworks-sdk-verification',version:'1.0.0'});
 try{
   await client.connect(new StreamableHTTPClientTransport(new URL(origin+'/mcp'),{requestInit:{headers:{Cookie:cookie}}}));
-  assert.equal((await client.listTools()).tools.length,15);
+  assert.equal((await client.listTools()).tools.length,16);
   const projects=await client.callTool({name:'list_projects',arguments:{limit:100}});assert.equal(projects.isError,false);assert.ok(projects.structuredContent.items.length);
   const project=await client.callTool({name:'get_project',arguments:{project_id:projects.structuredContent.items[0].id}});assert.equal(project.isError,false);
-  console.log(JSON.stringify({client:'@modelcontextprotocol/sdk',version:JSON.parse(await readFile(resolve(sdk,'package.json'),'utf8')).version,transport:'Streamable HTTP',protocol:'2025-11-25',tools:15,projectRead:true,browserRequired:false,authentication:'local Sites sign-in emulator; hosted OAuth requires separate verification'}));
+  console.log(JSON.stringify({client:'@modelcontextprotocol/sdk',version:JSON.parse(await readFile(resolve(sdk,'package.json'),'utf8')).version,transport:'Streamable HTTP',protocol:'2025-11-25',tools:16,projectRead:true,browserRequired:false,authentication:'local Sites sign-in emulator; hosted OAuth requires separate verification'}));
 }finally{await client.close();}

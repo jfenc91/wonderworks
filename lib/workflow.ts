@@ -75,13 +75,13 @@ export function editProposalRequirement(doc:Workspace,id:unknown,input:unknown) 
   const candidate=revised({...data,tags:data.tags??tagsOf(existing??{}),id:requirementId,revision:existing?.revision??1},p.baseRequirements.find(r=>r.id===requirementId));
   if(existing&&sameRequirement(existing,candidate))return;
   if(existing)p.requirements[p.requirements.indexOf(existing)]=candidate;else p.requirements.push(candidate);
-  p.updatedAt=new Date().toISOString();record(doc,`${p.id} staged ${requirementId} · ${candidate.title}`);
+  p.updatedAt=new Date().toISOString();record(doc,`${p.id} staged ${requirementId} · ${candidate.title}`,[requirementId]);
 }
 export function deleteProposalRequirement(doc:Workspace,id:unknown,requirementId:unknown) {
   const p=getProposal(doc,id,true);
   if(!p.requirements.some(r=>r.id===requirementId))throw Error('Requirement is not in this proposal');
   p.requirements=p.requirements.filter(r=>r.id!==requirementId);p.updatedAt=new Date().toISOString();
-  record(doc,`${p.id} staged removal of ${requirementId}`);
+  record(doc,`${p.id} staged removal of ${requirementId}`,[String(requirementId)]);
 }
 export function restoreProposalRequirement(doc:Workspace,id:unknown,requirementId:unknown) {
   const p=getProposal(doc,id,true),base=p.baseRequirements.find(r=>r.id===requirementId);
@@ -91,7 +91,7 @@ export function restoreProposalRequirement(doc:Workspace,id:unknown,requirementI
     const rank=new Map(p.baseRequirements.map((r,index)=>[r.id,index]));
     p.requirements.sort((a,b)=>(rank.get(a.id)??Infinity)-(rank.get(b.id)??Infinity));
   }
-  p.updatedAt=new Date().toISOString();record(doc,`${p.id} unstaged ${requirementId}`);
+  p.updatedAt=new Date().toISOString();record(doc,`${p.id} unstaged ${requirementId}`,[String(requirementId)]);
 }
 export function validateSet(doc:Workspace,requirements:Requirement[]) {
   if(new Set(requirements.map(r=>r.id)).size!==requirements.length)throw Error('Duplicate requirement IDs');

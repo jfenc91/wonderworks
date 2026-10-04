@@ -110,3 +110,23 @@ node --import tsx --test test/tagging.test.mjs test/tagging-api.test.mjs test/mc
 ```
 
 The checks cover normalization bounds, tag-only revisions/diffs, omitted fields, exact legacy snapshots, import validation, filter combinations and counts, UI/MCP filter parity, filter-bound cursors, proposal isolation and application, rebase conflicts, D1 rollback, and persisted retry receipts across worker replacement. Browser verification also exercises keyboard selection/removal, compact layouts, cancellation, validation feedback, reloads, and actual apply-and-snapshot review.
+
+### Requirement history (CP-003 / Wonderworks BL-004)
+
+A requirement's details now show creation, last committed change, last proposal acceptance, first/latest recorded approval, and latest recorded implementation dates. **History** opens a paginated timeline with saved before/after values, actor provenance, lifecycle transitions, and links to the exact applied proposal and snapshot. Activity, applied proposal changes, and snapshot requirements also open history, including for deleted identities. Dates include the time zone and the revision they describe; an old approval or acceptance does not describe a newer direct edit.
+
+The append-only `requirementHistory` records are stored separately from the capped recent Activity array inside the authoritative workspace document. Both are saved with the specification in the same version-checked D1 update; MCP receipt and workspace persistence remain transactional. No schema migration is needed. Every server mutation boundary captures actual committed differences once. Proposal additions record their first successful staging time as uncommitted creation provenance; later staging, submission, rejection and rebase never create accepted revisions. Application records one event per affected identity and retains its proposal, snapshot and review note. No-op saves and idempotent retries do not duplicate events. Deleted IDs remain reserved.
+
+Legacy dates remain unknown. Snapshot-only records supply a **first observed** date, never an invented creation/approval date. Reading metadata is pure: no backfill or rewriting of frozen exports or evidence occurs. Imported content records its local import time and revision gaps; imported history/actor/date fields are not trusted, and existing local records survive even when old clients omit them. Imported status values do not fabricate past approval or implementation transitions. A later gap preserves a first approval already established by complete local history.
+
+`get_requirement` adds `lifecycle` and `coverage` output metadata. The read-only MCP and browser tool `get_requirement_history` accepts explicit `project_id`, `requirement_id`, optional `limit` (1–100, default 50), and `cursor`. The matching application endpoint is `GET /api/requirement-history?project_id=<id>&requirement_id=<id>`. It returns the same lifecycle/coverage, current identity or deleted/pending state, saved events newest first, and `next_cursor`. Reuse all query arguments for later pages. Cursors bind project, requirement, limit and workspace consistency state; malformed or mismatched cursors return `INVALID_CURSOR`, concurrent writes return `RESTART_REQUIRED`, unknown identities return `NOT_FOUND`. Restart without a cursor after invalidation. MCP uses the existing trusted user access boundary; the application endpoint inherits the existing Sites audience protection.
+
+The catalog now has 16 tools. History and lifecycle are output metadata, not writable requirement fields; snapshots still contain only their exact frozen content. Events retain trusted actor IDs when available, explicitly unknown actors otherwise, and separately labeled reported client names.
+
+Run CP-003 verification against the loopback preview:
+
+```sh
+node --import tsx --test test/requirement-history.test.mjs test/requirement-history-api.test.mjs test/requirement-history-store.test.mjs
+```
+
+These checks cover every field, lifecycle cycles, pending provenance, multi-requirement application/deletion, legacy/import gaps, immutable snapshots, >500 Activity entries, pagination, overlapping project IDs, stale and invalid writes, forced real-D1 storage failures, and durable retries across worker replacement. The versioned report at `/verification/cp-003.json` identifies the executed checks and their exact requirement baseline.

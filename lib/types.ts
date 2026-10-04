@@ -4,5 +4,15 @@ export type Repository = {id:string;name:string;url:string;branch:string};
 export type Baseline = {id:string;date:string;name:string;requirements:Requirement[];sections:Section[];requirementsVersion?:number;repositories?:Repository[]};
 export type ChangeProposal = {id:string;title:string;description:string;status:'Draft'|'Proposed'|'Applied'|'Rejected';createdAt:string;updatedAt:string;baseVersion:number;baseRequirements:Requirement[];baseSections:Section[];requirements:Requirement[];reviewNote?:string;appliedVersion?:number;appliedSnapshot?:string};
 export type Evidence = {id:string;date:string;baseline:string;artifactUrl:string;summary:string;checks:{id:string;title:string;passed:boolean;detail:string}[]};
-export type Activity = {id:string;date:string;message:string;mcp?:{actorId:string;clientName?:string;tool:string;projectId:string;objectIds:string[];correlationId:string}};
-export type Workspace = {id:string;prefix:string;name:string;sections:Section[];requirements:Requirement[];history:Activity[];baselines:Baseline[];evidence:Evidence[];version:number;nextSequence?:number;requirementsVersion?:number;repositories?:Repository[];proposals?:ChangeProposal[]};
+export type Activity = {id:string;date:string;message:string;projectId?:string;requirementIds?:string[];mcp?:{actorId:string;clientName?:string;tool:string;projectId:string;objectIds:string[];correlationId:string}};
+export type HistoryActor = {id:string|null;reportedClientName?:string};
+export type RequirementEvent = {
+  id:string;projectId:string;requirementId:string;sequence:number;date:string;
+  kind:'created'|'changed'|'deleted'|'proposed_creation'|'imported';
+  source:string;actor:HistoryActor;committed:boolean;
+  before:Requirement|null;after:Requirement|null;fields:string[];
+  beforeSetVersion:number;afterSetVersion:number;
+  proposalId?:string;snapshotId?:string;reviewNote?:string;revisionGap?:boolean;
+};
+export type RequirementRecord = {complete:boolean;events:RequirementEvent[]};
+export type Workspace = {id:string;prefix:string;name:string;sections:Section[];requirements:Requirement[];history:Activity[];baselines:Baseline[];evidence:Evidence[];version:number;nextSequence?:number;requirementsVersion?:number;repositories?:Repository[];proposals?:ChangeProposal[];requirementHistory?:Record<string,RequirementRecord>};

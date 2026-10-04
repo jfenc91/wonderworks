@@ -3,6 +3,7 @@ import {upsert,record,validateDependencies,reconcileWorkspace} from '@/lib/requi
 import {saveRepository,createProposal,updateProposal,editProposalRequirement,deleteProposalRequirement,restoreProposalRequirement,submitProposal,rebaseProposal,reviewProposal,snapshot,setContent,setVersion} from '@/lib/workflow';
 import {z} from 'zod';
 import {recordEvidence} from '@/lib/evidence';
+import {captureRequirementHistory} from '@/lib/requirement-history';
 export const dynamic='force-dynamic';
 
 export async function GET(request:Request){
@@ -24,7 +25,7 @@ export async function POST(request:Request){
     }
     const doc=await readWorkspace(input.project??'asteroids');
     if(input.version!==doc.version)return Response.json({error:'This workspace changed in another session. Reload before saving.'},{status:409});
-    const before=setContent(doc),previousVersion=setVersion(doc);
+    const original=structuredClone(doc),before=setContent(doc),previousVersion=setVersion(doc);
     switch(input.action){
       case 'import':reconcileWorkspace(doc,input.workspace);break;
       case 'repository':saveRepository(doc,input.repository);break;
@@ -55,13 +56,14 @@ export async function POST(request:Request){
       case 'delete':{
         const req=doc.requirements.find(r=>r.id===input.id);if(!req)throw Error('Requirement not found');
         if(doc.requirements.some(r=>r.links.includes(req.id)))throw Error('Remove dependent links before deleting this requirement');
-        doc.requirements=doc.requirements.filter(r=>r.id!==req.id);record(doc,`${req.id} deleted · ${req.title}`);break;
+        doc.requirements=doc.requirements.filter(r=>r.id!==req.id);record(doc,`${req.id} deleted · ${req.title}`,[req.id]);break;
       }
       case 'baseline':snapshot(doc,input.name);break;
       case 'evidence':recordEvidence(doc,input.evidence);break;
       default:throw Error('Unknown workspace action');
     }
     if(setContent(doc)!==before && setVersion(doc)===previousVersion)doc.requirementsVersion=previousVersion+1;
+    captureRequirementHistory(original,doc,{source:input.action,actor:{id:request.headers.has('oai-sites-authorization')?null:request.headers.get('oai-authenticated-user-id')}});
     return Response.json(await saveWorkspace(doc,doc.version));
   }catch(error){
     if(error instanceof Error&&error.message==='CONFLICT')return Response.json({error:'This workspace changed in another session. Reload before saving.'},{status:409});

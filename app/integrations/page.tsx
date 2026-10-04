@@ -23,7 +23,7 @@ export default function Integrations(){
       <p><ShieldCheck size={18}/> Record test results against an existing snapshot, including failures.</p>
       <p>Access follows this Site’s sharing settings. To disconnect, open the plugin’s settings in your assistant and revoke its connection.</p>
     </section></div>
-    <details className="connection-card"><summary>Connection details</summary><p>The endpoint is this Site’s address followed by <code>/mcp</code>. The Site plugin supplies the correct OAuth resource and hosted sign-in flow automatically.</p><p>Transport: Streamable HTTP. Supported protocol revisions: 2025-11-25, 2025-06-18, and 2025-03-26. There are 15 tools; every project operation requires an explicit project ID.</p><p>Writes require the last-read workspace version and an idempotency key. Retry an uncertain write with identical arguments and the same key within 24 hours. After that window, inspect the saved proposal or evidence before trying again.</p></details>
+    <details className="connection-card"><summary>Connection details</summary><p>The endpoint is this Site’s address followed by <code>/mcp</code>. The Site plugin supplies the correct OAuth resource and hosted sign-in flow automatically.</p><p>Transport: Streamable HTTP. Supported protocol revisions: 2025-11-25, 2025-06-18, and 2025-03-26. There are 16 tools; every project operation requires an explicit project ID.</p><p>Writes require the last-read workspace version and an idempotency key. Retry an uncertain write with identical arguments and the same key within 24 hours. After that window, inspect the saved proposal or evidence before trying again.</p></details>
     <a className="secondary" href="/">Return to requirements</a>
   </main>;
 }
