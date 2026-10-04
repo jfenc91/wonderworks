@@ -4,7 +4,7 @@
   "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
   "baseline_id": "BL-012",
   "requirements_version": 12,
-  "verified_at": "2026-10-04T21:44:40.492Z",
+  "verified_at": "2026-10-04T21:54:58.487Z",
   "requirements": [
     {
       "id": "WW-013",
@@ -67,16 +67,16 @@
       "id": "WW-098",
       "title": "Executed rendering and authoring release verification",
       "passed": true,
-      "detail": "140 automated checks, 53 distinct browser checks across prior regression and final BL-012 suites, TypeScript and Worker build pass. Local browser flows use real D1 and independently authenticated MCP reads/writes. Built Worker repeat reported separately; no hosted OAuth or remote Git verification is claimed."
+      "detail": "142 automated checks, 53 distinct browser checks across prior regression and final BL-012 suites, TypeScript and Worker build pass. Local browser flows use real D1 and independently authenticated MCP reads/writes. Built Worker repeat reported separately; no hosted OAuth or remote Git verification is claimed. Large-record compression, full authoring receipts, rollback and restart replay are additionally verified."
     }
   ],
   "executed": {
     "automated": {
       "command": "node --import tsx --test --test-reporter=tap test/*.test.mjs",
-      "passed": 140,
+      "passed": 142,
       "failed": 0,
       "skipped": 0,
-      "log": "outputs/bl012-regression.log"
+      "log": "outputs/bl012-storage-regression-final.log"
     },
     "combined_browser": {
       "passed": 50,
@@ -89,15 +89,15 @@
       "passed": 11,
       "failed": 0,
       "skipped": 0,
-      "log": "outputs/bl012-reading-final.log",
-      "note": "Expanded ten scenarios plus parent check, rerun after final review-token and focus fixes. Supersedes the initial eight-check BL-012 run."
+      "log": "outputs/bl012-storage-browser.log",
+      "note": "Final suite rerun with a project above the compression threshold; supersedes earlier BL-012 runs."
     },
     "distinct_browser_checks": 53,
     "built_worker_browser": {
       "passed": 11,
       "failed": 0,
       "skipped": 0,
-      "log": "outputs/bl012-built-browser.log",
+      "log": "outputs/bl012-storage-built-browser.log",
       "frontend_origin": "http://127.0.0.1:5180",
       "mcp_origin": "http://127.0.0.1:5173",
       "note": "Same final BL-012 suite repeated against the built Cloudflare Worker; separate authenticated MCP process shares local D1."
@@ -114,5 +114,11 @@
     "Executed in isolated local QA projects with loopback sign-in emulation, not a hosted OAuth expiration/revocation certification.",
     "Implementation commit references identify the pushed Site source; they do not prove external Git repository reachability.",
     "Read-only previews and lifecycle metadata do not change verification outcomes."
-  ]
+  ],
+  "storage_recovery": {
+    "observed_error": "Production D1 SQLITE_TOOBIG while atomically recording the implementation reference; attempted workspace contained 8719391 UTF-8 bytes.",
+    "resolution": "Versioned, lossless gzip for large workspace records and complete authoring receipts, preserving the same atomic update/receipt transaction. Legacy JSON remains readable.",
+    "verification": "More than 9 MB, 100 requirements, 12 immutable snapshots, exact Unicode/source round trips, failed-write rollback, complete receipt replay, Worker restart and stale-version rejection.",
+    "rollback_constraint": "Keep compressed-record decoding in any rollback once a record has been converted."
+  }
 }

@@ -1,5 +1,6 @@
 import type {Workspace} from '../lib/types';
 import {ToolError} from '../lib/mcp/errors';
+import {encodeWorkspace,decodeWorkspace,encodeStoredRecord,decodeStoredRecord} from './workspace-codec';
 
 export type Receipt={key:string;project:string;fingerprint:string;result:Record<string,unknown>;expiresAt:number};
 export class McpStore {
@@ -12,14 +13,14 @@ export class McpStore {
   async read(id:string):Promise<Workspace>{
     const row=await this.db.prepare('SELECT data,version FROM workspaces WHERE id=?').bind(id).first<{data:string;version:number}>();
     if(!row)throw new ToolError('NOT_FOUND','Project not found or unavailable.');
-    const doc=JSON.parse(row.data);
+    const doc=await decodeWorkspace(row.data);
     return {...doc,id,version:row.version,requirementsVersion:doc.requirementsVersion??1,repositories:doc.repositories??[],proposals:doc.proposals??[]};
   }
   async replay(key:string,fingerprint:string,now:number){
     const row=await this.db.prepare('SELECT fingerprint,result FROM mcp_receipts WHERE key=? AND expires_at>?').bind(key,now).first<{fingerprint:string;result:string}>();
     if(!row)return null;
     if(row.fingerprint!==fingerprint)throw new ToolError('IDEMPOTENCY_KEY_REUSED','This idempotency key was already used with different arguments.');
-    return JSON.parse(row.result) as Record<string,unknown>;
+    return decodeStoredRecord<Record<string,unknown>>(row.result);
   }
   async commit(doc:Workspace,expected:number,receipt:Receipt,now:number,unchanged=false){
     // D1 batch is a transaction: INSERT and UPDATE see the same version and
@@ -30,9 +31,9 @@ export class McpStore {
       const results=await this.db.batch([
         this.db.prepare('DELETE FROM mcp_receipts WHERE expires_at<=?').bind(now),
         this.db.prepare('INSERT INTO mcp_receipts (key,project,fingerprint,result,expires_at) SELECT ?,?,?,?,? FROM workspaces WHERE id=? AND version=?')
-          .bind(receipt.key,doc.id,receipt.fingerprint,JSON.stringify(receipt.result),receipt.expiresAt,doc.id,expected),
+          .bind(receipt.key,doc.id,receipt.fingerprint,await encodeStoredRecord(receipt.result),receipt.expiresAt,doc.id,expected),
         this.db.prepare('UPDATE workspaces SET data=?,version=? WHERE id=? AND version=?')
-          .bind(JSON.stringify({...doc,version:expected+(unchanged?0:1)}),expected+(unchanged?0:1),doc.id,expected)
+          .bind(await encodeWorkspace({...doc,version:expected+(unchanged?0:1)}),expected+(unchanged?0:1),doc.id,expected)
       ]);
       if(results[2].meta.changes===1)return receipt.result;
     }catch(error){

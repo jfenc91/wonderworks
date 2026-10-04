@@ -29,6 +29,9 @@ test('BL012 complete reading and direct Changes authoring with independent MCP p
  await write('proposal_delete',{id:destination,requirementId:'RD-005'});
  await write('proposal_requirement',{id:destination,requirement:req('Added direct requirement',markdown)});const added=doc.proposals[0].requirements.at(-1).id;
  await write('proposal_requirement',{id:destination,requirement:{...guide(examples[1]),title:'Added Information guide'}});const info=doc.proposals[0].requirements.at(-1).id;
+ // Exercise the same lossless large-record storage path as long-lived projects.
+ for(let i=0;Buffer.byteLength(JSON.stringify(doc))<800000&&i<80;i++)await write('baseline',{name:'Large history reading fixture '+i});
+ assert.ok(Buffer.byteLength(JSON.stringify(doc))>=800000);
  const frozen=structuredClone({requirements:doc.requirements,requirementsVersion:doc.requirementsVersion,baselines:doc.baselines,evidence:doc.evidence,other:doc.proposals.find(p=>p.id===other)});
  const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})}),context=await browser.newContext({viewport:{width:1500,height:1100}}),page=await context.newPage(),errors=[],requests=[];
  page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
