@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "proposal_id": "CP-005",
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "baseline_id": "BL-007",
+  "requirements_version": 7,
+  "verified_at": "2026-10-04T18:37:21.584Z",
+  "requirements": [
+    {
+      "id": "WW-005",
+      "revision": 2
+    },
+    {
+      "id": "WW-009",
+      "revision": 3
+    },
+    {
+      "id": "WW-010",
+      "revision": 2
+    },
+    {
+      "id": "WW-028",
+      "revision": 2
+    },
+    {
+      "id": "WW-030",
+      "revision": 2
+    },
+    {
+      "id": "WW-031",
+      "revision": 2
+    },
+    {
+      "id": "WW-048",
+      "revision": 2
+    },
+    {
+      "id": "WW-061",
+      "revision": 1
+    },
+    {
+      "id": "WW-062",
+      "revision": 1
+    },
+    {
+      "id": "WW-063",
+      "revision": 1
+    },
+    {
+      "id": "WW-064",
+      "revision": 1
+    },
+    {
+      "id": "WW-065",
+      "revision": 1
+    },
+    {
+      "id": "WW-066",
+      "revision": 1
+    },
+    {
+      "id": "WW-027",
+      "revision": 3
+    },
+    {
+      "id": "WW-032",
+      "revision": 2
+    },
+    {
+      "id": "WW-067",
+      "revision": 1
+    },
+    {
+      "id": "WW-068",
+      "revision": 1
+    },
+    {
+      "id": "WW-069",
+      "revision": 1
+    },
+    {
+      "id": "WW-070",
+      "revision": 1
+    },
+    {
+      "id": "WW-071",
+      "revision": 1
+    }
+  ],
+  "summary": "BL-007 proposal-only authoring: 89 automated checks, 8 authoring browser checks and 15 CP-006 browser checks passed, with no failures or skipped checks. TypeScript and Worker build passed.",
+  "automated": {
+    "command": "node --import tsx --test test/*.test.mjs",
+    "passed": 89,
+    "failed": 0,
+    "skipped": 0
+  },
+  "browser": {
+    "commands": [
+      "node --test test/proposal-authoring.browser.mjs",
+      "WONDERWORKS_SECOND_URL=http://127.0.0.1:5180 node --test test/workspace-sync.browser.mjs"
+    ],
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "contexts": 2,
+    "separate_mcp_client": true,
+    "separate_worker_process": true,
+    "visible_update_ms": [
+      284,
+      785,
+      784,
+      24,
+      1794,
+      1286
+    ]
+  },
+  "limitations": [
+    "Tests use disposable loopback projects and local emulated identity. Simulated access failures do not certify hosted OAuth expiry or revocation.",
+    "Publication is tracked by Sites separately from this local test report. Requirement lifecycle statuses are unchanged."
+  ],
+  "checks": [
+    {
+      "id": "WW-005",
+      "title": "Author requirements with measurable acceptance criteria",
+      "passed": true,
+      "detail": "Browser saves from accepted requirements choose/create a Draft; successful staging selects the saved requirement. Field validation and cancellation were exercised."
+    },
+    {
+      "id": "WW-009",
+      "title": "Track meaningful requirement revisions",
+      "passed": true,
+      "detail": "Domain/API tests verified stable IDs, base-relative revisions, equivalent-tag no-ops, restoration, and accepted revision changes only on Apply."
+    },
+    {
+      "id": "WW-010",
+      "title": "Delete requirements without breaking references",
+      "passed": true,
+      "detail": "Deletion confirmation, final dependency rejection, atomic dependent/target deletion, restore validation, and frozen-content retention passed."
+    },
+    {
+      "id": "WW-028",
+      "title": "Provide validated reads and proposal-based batch requirement writes",
+      "passed": true,
+      "detail": "API tests rejected missing/closed targets, invalid and oversized batches, invalid final dependencies, and stale saves without partial changes."
+    },
+    {
+      "id": "WW-030",
+      "title": "Reconcile compatible imports without bypassing requirement review",
+      "passed": true,
+      "detail": "Imports rejected accepted additions/deletions/revisions and ignored forged proposal outcomes; unchanged imports preserved authoritative history, metadata, snapshots and evidence."
+    },
+    {
+      "id": "WW-031",
+      "title": "Expose browser tools for requirements assistants",
+      "passed": true,
+      "detail": "A registered browser model-context fixture exercised read/save_requirements, explicit Draft targeting, rejection without a target, and accepted-set isolation."
+    },
+    {
+      "id": "WW-048",
+      "title": "Review tag changes through the existing proposal workflow",
+      "passed": true,
+      "detail": "Tag normalization, omitted tags, clearing, no-ops, proposal diffs, application, rebase, and immutable evidence/snapshot regressions passed."
+    },
+    {
+      "id": "WW-061",
+      "title": "Keep accepted requirements unchanged until proposal application",
+      "passed": true,
+      "detail": "Requirements/Changes share the proposal editor. REST/MCP staging, submission, rejection and request changes preserve accepted content; reviewed Apply promotes content without auto-approving lifecycle status."
+    },
+    {
+      "id": "WW-062",
+      "title": "Select a proposal or latest accepted requirements in the main view",
+      "passed": true,
+      "detail": "Browser checks exercised complete selected staged sets, search/tags, same-project context retention, deletion/restore, stale bases without overlay, closed-context recovery and read-only Proposed state."
+    },
+    {
+      "id": "WW-063",
+      "title": "Choose or create a change proposal when saving an edit",
+      "passed": true,
+      "detail": "Browser checks exercised existing/new destinations, cancellation, preexisting staged differences, live destination lifecycle updates and preserved creation fields."
+    },
+    {
+      "id": "WW-064",
+      "title": "Preserve pending edits across proposal selection and save failures",
+      "passed": true,
+      "detail": "Real D1 failure/restart and concurrent retry tests verified atomic creation and receipts; browser tests verified 409 reconciliation, pending navigation, uncertain saves, input typed in flight and uncommitted tag retention."
+    },
+    {
+      "id": "WW-065",
+      "title": "Preserve proposal review and stale-base safeguards from the main view",
+      "passed": true,
+      "detail": "Independent browsers and authenticated MCP exercised shared proposal diffs, review freshness, request changes, apply, coherent snapshot/history/evidence updates and preserved staged sets."
+    },
+    {
+      "id": "WW-066",
+      "title": "Verify proposal-based editing and accepted-view isolation",
+      "passed": true,
+      "detail": "89 automated checks, 8 proposal-authoring browser checks and 15 live-update browser checks passed. TypeScript and Worker production build passed."
+    },
+    {
+      "id": "WW-027",
+      "title": "Reject stale writes without losing newer changes",
+      "passed": true,
+      "detail": "Version-gated writes and explicit reconciliation passed; stale/uncertain saves preserve input and original retry arguments."
+    },
+    {
+      "id": "WW-032",
+      "title": "Provide clear loading, saving, and error feedback",
+      "passed": true,
+      "detail": "Browser error/recovery checks preserved input and avoided false save success during outages and denied access."
+    },
+    {
+      "id": "WW-067",
+      "title": "Automatically show saved changes from other users and MCP",
+      "passed": true,
+      "detail": "Two independent browser sessions, a separate authenticated MCP client and another Worker converged within the five-second local target."
+    },
+    {
+      "id": "WW-068",
+      "title": "Reconcile live updates using committed workspace versions",
+      "passed": true,
+      "detail": "Conditional reads, unchanged 304 responses, coalescing, duplicate/out-of-order versions and cleanup passed."
+    },
+    {
+      "id": "WW-069",
+      "title": "Preserve unsaved edits while remote changes arrive",
+      "passed": true,
+      "detail": "Dirty requirements, destination forms, proposal review and snapshot metadata retained input and protected their save/review base across remote updates."
+    },
+    {
+      "id": "WW-070",
+      "title": "Recover live synchronization and show connection state",
+      "passed": true,
+      "detail": "Offline/online, server failure, denied access and browser suspension recovery passed in controlled local fixtures."
+    },
+    {
+      "id": "WW-071",
+      "title": "Verify live updates across browser sessions and MCP",
+      "passed": true,
+      "detail": "The full CP-006 browser suite ran with no skipped checks; recorded healthy visible-update samples ranged from 24 to 1794 ms."
+    }
+  ]
+}

@@ -85,6 +85,7 @@ export function deleteProposalRequirement(doc:Workspace,id:unknown,requirementId
 }
 export function restoreProposalRequirement(doc:Workspace,id:unknown,requirementId:unknown) {
   const p=getProposal(doc,id,true),base=p.baseRequirements.find(r=>r.id===requirementId);
+  if(!base&&!p.requirements.some(r=>r.id===requirementId))throw Error('Requirement is not in this proposal');
   p.requirements=p.requirements.filter(r=>r.id!==requirementId);
   if(base){
     p.requirements.push(structuredClone(base));

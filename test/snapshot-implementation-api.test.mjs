@@ -1,3 +1,4 @@
+import {acceptRequirements} from './fixtures/accepted-requirements.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {toolMap} from '../lib/mcp/contracts.ts';
@@ -7,6 +8,7 @@ async function rest(body,status=200){const r=await fetch(origin+'/api/workspace'
 test('snapshot metadata agrees across application API, MCP and saved workspace',async t=>{
   const cookie=(await fetch(origin+'/signin-with-chatgpt?return_to=/',{redirect:'manual'})).headers.get('set-cookie').split(';')[0];
   let doc=await rest({action:'project',name:'CP-004 Snapshot Commit QA (local)',prefix:'CQ'});
+  const accept=async({requirements})=>doc=await acceptRequirements(doc,requirements,rest);
   const read=async()=>doc=await (await fetch(origin+'/api/workspace?project='+doc.id)).json();
   const mutate=async(action,data={})=>doc=await rest({action,project:doc.id,version:doc.version,...data});
   const call=async(name,args,code)=>{const response=await fetch(origin+'/mcp',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json, text/event-stream','MCP-Protocol-Version':'2025-11-25',Cookie:cookie},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})});const {result}=await response.json();assert.equal(result.isError,!!code,JSON.stringify(result));if(code)assert.equal(result.structuredContent.error.code,code);else toolMap.get(name).output.parse(result.structuredContent);return result.structuredContent;};
@@ -14,7 +16,7 @@ test('snapshot metadata agrees across application API, MCP and saved workspace',
   const get=async(id,query={},status=200)=>{const response=await fetch(origin+'/api/snapshot-implementation?'+new URLSearchParams({project_id:doc.id,baseline_id:id,...query}),{headers:{Cookie:cookie}});const result=await response.json();assert.equal(response.status,status,JSON.stringify(result));return result;};
   const args=(commit,baseline_id='BL-001')=>({project_id:doc.id,baseline_id,expected_workspace_version:doc.version,idempotency_key:crypto.randomUUID(),implementation_commit:commit});
   const input=extra=>({section:doc.sections[0].id,title:'Snapshot API requirement',description:'Preserve exact frozen implementation context.',criteria:['The saved context remains readable.'],priority:'High',status:'Draft',parameters:{},links:[],...extra});
-  await mutate('section',{section:{title:'Snapshot behavior',description:''}});await mutate('requirements',{requirements:[input(),input({title:'Deleted by proposal'})]});await mutate('baseline',{name:'Original snapshot'});await mutate('repository',{repository:{name:'Test implementation',url:'https://example.com/project',branch:'main'}});
+  await mutate('section',{section:{title:'Snapshot behavior',description:''}});await accept({requirements:[input(),input({title:'Deleted by proposal'})]});await mutate('repository',{repository:{name:'Test implementation',url:'https://example.com/project',branch:'main'}});
   await mutate('proposal',{proposal:{title:'Accepted snapshot changes'}});const proposal=doc.proposals[0].id;
   await mutate('proposal_requirement',{id:proposal,requirement:input({id:'CQ-001',title:'Changed requirement'})});await mutate('proposal_delete',{id:proposal,requirementId:'CQ-002'});await mutate('proposal_requirement',{id:proposal,requirement:input({title:'Added requirement'})});
   await t.test('pending then applied inclusion exposes exact first snapshot and reverse links',async()=>{
@@ -40,7 +42,7 @@ test('snapshot metadata agrees across application API, MCP and saved workspace',
   });
   await t.test('later commits and unrelated saves do not retarget accepted proposals or erase metadata',async()=>{
     await mutate('baseline',{name:'Later snapshot'});await api(args({commit_id:'c'.repeat(40)},'BL-003'));await read();assert.equal((await call('get_proposal',{project_id:doc.id,proposal_id:proposal})).proposal.first_included.implementation_commit,null);
-    await api(args({commit_id:'c'.repeat(40),repository_id:doc.repositories[0].id},'BL-002'));await read();const metadata=structuredClone(doc.snapshotImplementations);await mutate('repository_remove',{id:doc.repositories[0].id});await mutate('requirements',{requirements:[input({id:'CQ-001',title:'Later direct revision'})]});assert.deepEqual(doc.snapshotImplementations,metadata);
+    await api(args({commit_id:'c'.repeat(40),repository_id:doc.repositories[0].id},'BL-002'));await read();const metadata=structuredClone(doc.snapshotImplementations);await mutate('repository_remove',{id:doc.repositories[0].id});await accept({requirements:[input({id:'CQ-001',title:'Later direct revision'})]});assert.deepEqual(doc.snapshotImplementations,metadata);
     const imported=structuredClone(doc);delete imported.snapshotImplementations;await mutate('import',{workspace:imported});assert.deepEqual(doc.snapshotImplementations,metadata);assert.equal((await call('get_proposal',{project_id:doc.id,proposal_id:proposal})).proposal.first_included.snapshot.id,'BL-002');
   });
   await t.test('overlapping project snapshot/proposal IDs are isolated and foreign repositories rejected',async()=>{

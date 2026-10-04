@@ -1,3 +1,4 @@
+import {acceptRequirements} from './fixtures/accepted-requirements.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {toolMap} from '../lib/mcp/contracts.ts';
@@ -49,20 +50,21 @@ test('MCP transport, authentication boundary, and contract discovery',async t=>{
 
 test('MCP proposal, read, concurrency, evidence, and UI API workflow',async t=>{
   let doc=await rest({action:'project',name:'MCP QA (local)',prefix:'MQ'});
+  const accept=async({requirements})=>doc=await acceptRequirements(doc,requirements,rest);
   const project_id=doc.id;
   async function mutate(action,payload={}){doc=await rest({project:project_id,version:doc.version,action,...payload});return doc;}
   async function read(){doc=await (await fetch(origin+'/api/workspace?project='+project_id)).json();return doc;}
   const write=(extra={})=>({project_id,expected_workspace_version:doc.version,idempotency_key:crypto.randomUUID(),...extra});
   await mutate('section',{section:{title:'MCP behavior',description:'Local integration verification'}});
   const input=(title,links=[])=>({section:doc.sections[0].id,title,description:'The system shall preserve the proposed behavior.',criteria:['An observable criterion.'],priority:'High',status:'Draft',parameters:{enabled:true},links});
-  await mutate('requirements',{requirements:[input('Unrelated current requirement'),input('Edit this requirement'),input('Delete this requirement')]});
+  await accept({requirements:[input('Unrelated current requirement'),input('Edit this requirement'),input('Delete this requirement')]});
   await mutate('baseline',{name:'Original exact snapshot'});
   const original=structuredClone(doc),frozen=structuredClone(doc.baselines[0]);
   const createArgs=write({title:'MCP staged changes',description:'Testing atomic staged changes.'});
   const created=await call('create_proposal',createArgs),proposal_id=created.proposal_id;await read();
   await t.test('retry keys return original results before stale version checks',async()=>{
     assert.deepEqual(await call('create_proposal',createArgs),created);
-    const version=doc.version;await read();assert.equal(doc.version,version);assert.equal(doc.proposals.length,1);
+    const version=doc.version;await read();assert.equal(doc.version,version);assert.equal(doc.proposals.length,original.proposals.length+1);
     await call('create_proposal',{...createArgs,title:'Different operation'},'IDEMPOTENCY_KEY_REUSED');
     const conflict=await call('create_proposal',{...createArgs,idempotency_key:crypto.randomUUID()},'CONFLICT');assert.equal(conflict.error.current_workspace_version,version);
   });
@@ -104,14 +106,14 @@ test('MCP proposal, read, concurrency, evidence, and UI API workflow',async t=>{
     await call('list_requirements',{project_id,limit:1,cursor:first.next_cursor},'RESTART_REQUIRED');
   });
   await t.test('stale proposal and overlapping rebase require explicit resolution',async()=>{
-    await call('submit_proposal',write({proposal_id}));await read();assert.equal(doc.proposals[0].status,'Proposed');
+    await call('submit_proposal',write({proposal_id}));await read();assert.equal(doc.proposals.find(p=>p.id===proposal_id).status,'Proposed');
     await call('stage_proposal_changes',write({proposal_id,operations:[{op:'delete',requirement_id:refs.foundation}]}),'VALIDATION_ERROR');
-    await mutate('requirements',{requirements:[{...doc.requirements[0],title:'Unrelated latest edit'},{...doc.requirements[1],title:'Overlapping latest edit'}]});
+    await accept({requirements:[{...doc.requirements[0],title:'Unrelated latest edit'},{...doc.requirements[1],title:'Overlapping latest edit'}]});
     const p=(await call('get_proposal',{project_id,proposal_id})).proposal;assert.equal(p.stale,true);assert.equal(p.conflicts.length,1);assert.equal(p.conflicts[0].latest.title,'Overlapping latest edit');
     await call('submit_proposal',write({proposal_id}),'STALE_PROPOSAL');
     await call('rebase_proposal',write({proposal_id,resolutions:{}}),'REBASE_CONFLICT');
     await call('rebase_proposal',write({proposal_id,resolutions:{[original.requirements[1].id]:'proposed'}}));await read();
-    assert.equal(doc.proposals[0].status,'Draft');assert.equal(doc.proposals[0].requirements[0].title,'Unrelated latest edit');assert.equal(doc.proposals[0].requirements[1].title,'Edited via MCP');
+    assert.equal(doc.proposals.find(p=>p.id===proposal_id).status,'Draft');assert.equal(doc.proposals.find(p=>p.id===proposal_id).requirements[0].title,'Unrelated latest edit');assert.equal(doc.proposals.find(p=>p.id===proposal_id).requirements[1].title,'Edited via MCP');
     await call('submit_proposal',write({proposal_id}));await read();
   });
   await t.test('existing review application creates exactly one version and snapshot',async()=>{

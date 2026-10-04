@@ -1,3 +1,4 @@
+import {acceptRequirements} from './fixtures/accepted-requirements.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {toolMap} from '../lib/mcp/contracts.ts';
@@ -11,12 +12,13 @@ async function call(name,args,code){const r=await fetch(origin+'/mcp',{method:'P
 test('tagging persists across REST and MCP, filters pages, and preserves review boundaries',async t=>{
   cookie=(await fetch(origin+'/signin-with-chatgpt?return_to=/',{redirect:'manual'})).headers.get('set-cookie').split(';')[0];
   let doc=await rest({action:'project',name:'Tagging API QA (local)',prefix:'TQ'});const project_id=doc.id;
+  const accept=async({requirements})=>doc=await acceptRequirements(doc,requirements,rest);
   const read=async()=>doc=await (await fetch(origin+'/api/workspace?project='+project_id)).json();
   const mutate=async(action,payload={})=>doc=await rest({action,project:project_id,version:doc.version,...payload});
   const write=extra=>({project_id,expected_workspace_version:doc.version,idempotency_key:crypto.randomUUID(),...extra});
   await mutate('section',{section:{title:'Core behavior',description:''}});await mutate('section',{section:{title:'Operations',description:''}});
   const input=(title,extra={})=>({section:doc.sections[0].id,title,description:'The system preserves the requested behavior.',criteria:['An observable acceptance criterion.'],priority:'High',status:'Draft',parameters:{},links:[],...extra});
-  await mutate('requirements',{requirements:[input('Gateway authorization',{tags:[' MCP ','SECURITY','mcp']}),input('Remote catalog',{status:'Approved',tags:['mcp']}),input('Durable operation',{section:doc.sections[1].id,tags:['reliability']}),input('Unclassified behavior')]});
+  await accept({requirements:[input('Gateway authorization',{tags:[' MCP ','SECURITY','mcp']}),input('Remote catalog',{status:'Approved',tags:['mcp']}),input('Durable operation',{section:doc.sections[1].id,tags:['reliability']}),input('Unclassified behavior')]});
   assert.deepEqual(doc.requirements[0].tags,['mcp','security']);assert.deepEqual(doc.requirements[3].tags,[]);
   await mutate('baseline',{name:'Initial tagged snapshot'});const frozen=structuredClone(doc.baselines[0]);
   await t.test('exact Any/All/Untagged filters and tag text search agree with the UI',async()=>{
@@ -34,13 +36,15 @@ test('tagging persists across REST and MCP, filters pages, and preserves review 
     const page=await call('list_requirements',{project_id,tags:[' MCP ','mcp'],limit:1});assert.equal(page.items[0].id,'TQ-001');assert.ok(page.next_cursor);
     const next=await call('list_requirements',{project_id,tags:['mcp'],limit:1,cursor:page.next_cursor});assert.equal(next.items[0].id,'TQ-002');
     for(const filters of [{tags:['security']},{tags:['mcp'],tag_mode:'all'},{tags:[],untagged_only:true}])await call('list_requirements',{project_id,...filters,limit:1,cursor:page.next_cursor},'INVALID_CURSOR');
-    await mutate('requirements',{requirements:[{...input('Unclassified behavior revised'),id:'TQ-004'}]});
+    await accept({requirements:[{...input('Unclassified behavior revised'),id:'TQ-004'}]});
     await call('list_requirements',{project_id,tags:['mcp'],limit:1,cursor:page.next_cursor},'RESTART_REQUIRED');
   });
   await t.test('REST omission preserves tags; normalized no-ops do not create revisions or history',async()=>{
+    await mutate('proposal',{proposal:{title:'REST tag normalization checks'}});const proposal_id=doc.proposals[0].id;
     let r=doc.requirements[0],rev=r.revision;const history=doc.history.length,set=doc.requirementsVersion;
-    await mutate('requirements',{requirements:[{...input(r.title),id:r.id,tags:['SECURITY',' MCP ','mcp']}]});assert.equal(doc.requirements[0].revision,rev);assert.equal(doc.history.length,history);assert.equal(doc.requirementsVersion,set);
-    await mutate('requirements',{requirements:[{...input('Gateway authentication'),id:r.id}]});assert.deepEqual(doc.requirements[0].tags,['mcp','security']);assert.equal(doc.requirements[0].revision,rev+1);
+    await mutate('requirements',{proposal_id,requirements:[{...input(r.title),id:r.id,tags:['SECURITY',' MCP ','mcp']}]});assert.equal(doc.proposals[0].requirements[0].revision,rev);assert.equal(doc.history.length,history);assert.equal(doc.requirementsVersion,set);
+    await mutate('requirements',{proposal_id,requirements:[{...input('Gateway authentication'),id:r.id}]});assert.deepEqual(doc.proposals[0].requirements[0].tags,['mcp','security']);assert.equal(doc.proposals[0].requirements[0].revision,rev+1);assert.equal(doc.requirements[0].revision,rev);
+    await mutate('proposal_submit',{id:proposal_id});await mutate('proposal_review',{id:proposal_id,review:{decision:'apply'}});
     const before=structuredClone(doc);await rest({action:'requirements',project:project_id,version:doc.version,requirements:[input('Valid batch member',{tags:['valid']}),input('Invalid batch member',{tags:['not!valid']})]},400);assert.deepEqual(await read(),before);
   });
   let proposal_id;
@@ -56,8 +60,8 @@ test('tagging persists across REST and MCP, filters pages, and preserves review 
     await call('submit_proposal',write({proposal_id}));await read();assert.deepEqual(doc.requirements,unchanged);
   });
   await t.test('apply advances set once, freezes exact tags, and leaves old evidence and snapshots intact',async()=>{
-    const version=doc.requirementsVersion;await mutate('proposal_review',{id:proposal_id,review:{decision:'apply'}});assert.equal(doc.requirementsVersion,version+1);assert.deepEqual(doc.requirements[0].tags,['mcp','reliability']);assert.equal(doc.baselines.length,2);assert.deepEqual(doc.baselines[1],frozen);
-    assert.deepEqual((await call('get_snapshot',{project_id,baseline_id:frozen.id})).snapshot,frozen);await rest({action:'proposal_review',project:project_id,version:doc.version,id:proposal_id,review:{decision:'apply'}},400);assert.equal((await read()).baselines.length,2);
+    const version=doc.requirementsVersion;await mutate('proposal_review',{id:proposal_id,review:{decision:'apply'}});assert.equal(doc.requirementsVersion,version+1);assert.deepEqual(doc.requirements[0].tags,['mcp','reliability']);assert.ok(doc.baselines.length>=2);assert.deepEqual(doc.baselines.find(b=>b.id===frozen.id),frozen);
+    assert.deepEqual((await call('get_snapshot',{project_id,baseline_id:frozen.id})).snapshot,frozen);await rest({action:'proposal_review',project:project_id,version:doc.version,id:proposal_id,review:{decision:'apply'}},400);assert.equal((await read()).baselines[0].requirementsVersion,version+1);
     const other=await rest({action:'project',name:'Tag isolation QA (local)',prefix:'TI'});assert.equal((await call('list_requirements',{project_id:other.id,tags:['mcp']})).items.length,0);
   });
 });

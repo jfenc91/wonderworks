@@ -37,7 +37,7 @@ export const TagEditor = forwardRef<TagEditorHandle, {value: string[]; suggestio
     <label htmlFor={id}>Tags <span className="tag-limit">{value.length} / 20</span></label>
     <TagBadges tags={value} onRemove={tag => {onChange(value.filter(t => t !== tag)); setError('');}}/>
     <div className="tag-add-row">
-      <Combobox items={choices} filter={null} value={null} inputValue={input} onInputValueChange={(value,details) => {if(details.reason !== 'item-press')setInput(value);}} onValueChange={(tag: string|null) => {if (tag) add(tag);}} autoHighlight>
+      <Combobox items={choices} filter={null} value={null} inputValue={input} onInputValueChange={(value,details) => {if(details.reason === 'input-change')setInput(value);}} onValueChange={(tag: string|null) => {if (tag) add(tag);}} autoHighlight>
         <ComboboxInput id={id} aria-label="Tags" className="tag-combobox" placeholder="Add or find a tag…" maxLength={100} aria-describedby={id+'-hint'} onKeyDown={event => {if (event.key === 'Enter' && !choices.length) {event.preventDefault(); add();}}}/>
         <ComboboxContent className="tag-options"><ComboboxEmpty>{input ? 'Use letters, numbers, and hyphens.' : 'Type a tag, such as mcp or security.'}</ComboboxEmpty><ComboboxList>{(tag: string) => <ComboboxItem key={tag} value={tag}>{!suggestions.includes(tag) && !value.includes(tag) ? 'Create '+tag : tag}</ComboboxItem>}</ComboboxList></ComboboxContent>
       </Combobox>

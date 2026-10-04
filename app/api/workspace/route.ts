@@ -1,6 +1,6 @@
 import {readWorkspace,readWorkspaceVersion,saveWorkspace,listWorkspaces,createWorkspace} from '@/db/workspace';
-import {upsert,record,validateDependencies,reconcileWorkspace} from '@/lib/requirements';
-import {saveRepository,createProposal,updateProposal,editProposalRequirement,deleteProposalRequirement,restoreProposalRequirement,submitProposal,rebaseProposal,reviewProposal,snapshot,setContent,setVersion} from '@/lib/workflow';
+import {record,reconcileWorkspace} from '@/lib/requirements';
+import {saveRepository,createProposal,updateProposal,editProposalRequirement,deleteProposalRequirement,restoreProposalRequirement,submitProposal,rebaseProposal,reviewProposal,snapshot,setContent,setVersion,getProposal,validateSet} from '@/lib/workflow';
 import {z} from 'zod';
 import {recordEvidence} from '@/lib/evidence';
 import {captureRequirementHistory} from '@/lib/requirement-history';
@@ -31,6 +31,7 @@ export async function POST(request:Request){
       const p=z.object({name:z.string().trim().min(2).max(80),prefix:z.string().regex(/^[A-Z]{2,6}$/)}).parse(input);
       return Response.json(await createWorkspace(p.name,p.prefix));
     }
+    if(['requirements','delete','proposal_requirement','proposal_delete','proposal_restore'].includes(input.action)&&(!input.project||typeof input.project!=='string'))throw Error('Choose an explicit project and Draft proposal for requirement changes.');
     projectId=input.project??'asteroids';
     const doc=await readWorkspace(projectId);
     if(input.version!==doc.version)return Response.json({error:'Newer saved changes are available. Fetch the latest workspace and explicitly reconcile your pending edit before saving.',current_workspace_version:doc.version},{status:409});
@@ -46,9 +47,9 @@ export async function POST(request:Request){
       }
       case 'proposal':createProposal(doc,input.proposal);break;
       case 'proposal_update':updateProposal(doc,input.id,input.proposal);break;
-      case 'proposal_requirement':editProposalRequirement(doc,input.id,input.requirement);break;
-      case 'proposal_delete':deleteProposalRequirement(doc,input.id,input.requirementId);break;
-      case 'proposal_restore':restoreProposalRequirement(doc,input.id,input.requirementId);break;
+      case 'proposal_requirement':editProposalRequirement(doc,input.id,input.requirement);validateSet(doc,getProposal(doc,input.id).requirements);break;
+      case 'proposal_delete':deleteProposalRequirement(doc,input.id,input.requirementId);validateSet(doc,getProposal(doc,input.id).requirements);break;
+      case 'proposal_restore':restoreProposalRequirement(doc,input.id,input.requirementId);validateSet(doc,getProposal(doc,input.id).requirements);break;
       case 'proposal_submit':submitProposal(doc,input.id);break;
       case 'proposal_rebase':rebaseProposal(doc,input.id,input.resolutions);break;
       case 'proposal_review':reviewProposal(doc,input.id,input.review);break;
@@ -58,14 +59,17 @@ export async function POST(request:Request){
         else doc.sections.push({...section,id:crypto.randomUUID()});
         record(doc,`Section ${section.id?'updated':'created'} · ${section.title}`);break;
       }
-      case 'requirements':
-        if(!Array.isArray(input.requirements)||input.requirements.length>100)throw Error('Provide up to 100 requirements');
-        for(const r of input.requirements)upsert(doc,r);
-        validateDependencies(doc);break;
-      case 'delete':{
-        const req=doc.requirements.find(r=>r.id===input.id);if(!req)throw Error('Requirement not found');
-        if(doc.requirements.some(r=>r.links.includes(req.id)))throw Error('Remove dependent links before deleting this requirement');
-        doc.requirements=doc.requirements.filter(r=>r.id!==req.id);record(doc,`${req.id} deleted · ${req.title}`,[req.id]);break;
+      case 'requirements': {
+        if(!Array.isArray(input.requirements)||!input.requirements.length||input.requirements.length>100)throw Error('Provide 1–100 requirements');
+        if(!input.proposal_id)throw Error('Choose an explicit Draft proposal_id. Requirement writes must be staged and reviewed before Apply.');
+        const proposal=getProposal(doc,input.proposal_id,true);
+        for(const r of input.requirements)editProposalRequirement(doc,proposal.id,r);
+        validateSet(doc,proposal.requirements);break;
+      }
+      case 'delete': {
+        if(!input.proposal_id)throw Error('Choose an explicit Draft proposal_id to stage this deletion. Apply a reviewed proposal to change accepted requirements.');
+        deleteProposalRequirement(doc,input.proposal_id,input.id);
+        validateSet(doc,getProposal(doc,input.proposal_id).requirements);break;
       }
       case 'baseline':snapshot(doc,input.name);break;
       case 'evidence':recordEvidence(doc,input.evidence);break;

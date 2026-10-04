@@ -61,3 +61,14 @@
 .topbar-right .sync-state.offline,.topbar-right .sync-state.reconnecting,.topbar-right .sync-state.blocked { color:#f8b67d!important; }
 .sync-state.offline:before,.sync-state.reconnecting:before,.sync-state.blocked:before { background:#f8b67d; }
 @media(max-width:640px) { .topbar-right>a,.topbar-right>.avatar { display:none; } .topbar { padding:0 18px; gap:12px; } }
+
+/* The working set stays visible independently of the selected workflow tab. */
+.working-context {padding:20px 0;border-bottom:1px solid var(--border);display:grid;gap:10px;}
+.working-context>label,.authoring-destination>strong {font-size:12px;font-weight:600;}
+.working-context select,.editor-form select {width:100%;min-width:0;max-width:100%;border:1px solid var(--border);background:var(--background);color:inherit;border-radius:6px;padding:10px;font:inherit;}
+.working-context p,.authoring-destination p {font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere;}
+.working-context>.ghost {justify-self:start;}
+.destination-dialog {max-height:90dvh;overflow-y:auto;}
+.authoring-content {max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;}
+.authoring-destination {border:1px solid var(--border);padding:14px;border-radius:8px;}
+@media(max-width:600px){.editor-actions {flex-wrap:wrap;}.working-context select {font-size:12px;}.destination-dialog{max-width:calc(100vw - 24px);}}

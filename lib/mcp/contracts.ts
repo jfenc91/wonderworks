@@ -47,7 +47,7 @@ const write={...project,expected_workspace_version:z.number().int().nonnegative(
 const ref=z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/);
 const link=z.union([reqId,z.string().regex(/^\$[A-Za-z][A-Za-z0-9_-]{0,63}$/)]).describe('An existing requirement ID or $client_ref for an addition in this batch.');
 const stagedInput=requirementInput.extend({links:z.array(link).max(30).default([])});
-const operation=z.discriminatedUnion('op',[
+export const operation=z.discriminatedUnion('op',[
   z.strictObject({op:z.literal('add'),client_ref:ref,requirement:stagedInput}),
   z.strictObject({op:z.literal('edit'),requirement_id:reqId,requirement:stagedInput}),
   z.strictObject({op:z.literal('delete'),requirement_id:reqId}),

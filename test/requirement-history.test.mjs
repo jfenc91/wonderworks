@@ -74,19 +74,20 @@ test('durability beyond Activity retention, pagination, concurrent changes, proj
   for(const limit of [0,101,1.5])await assert.rejects(()=>requirementHistoryPage(restored,'HT-001',{limit}),{code:'VALIDATION_ERROR'});
   commit(restored,'requirements',d=>upsert(d,{...d.requirements[0],title:'Concurrent update'}));await assert.rejects(()=>requirementHistoryPage(restored,'HT-001',{cursor:one.next_cursor}),{code:'RESTART_REQUIRED'});
 });
+// These fixtures represent historical imports already stored before proposal-only authoring.
 test('legacy observations, import gaps and untrusted history preserve frozen data and local provenance',()=>{
   const doc=workspace();upsert(doc,input({status:'Approved'}));snapshot(doc,'Legacy observation');
   const frozen=JSON.stringify(doc.baselines),before=JSON.stringify(doc),old=requirementHistory(doc,'HT-001');
   assert.equal(old.coverage.state,'partial');assert.equal(old.lifecycle.created.state,'unknown');assert.equal(old.lifecycle.first_approved.state,'unknown');assert.equal(old.coverage.first_observed.snapshotId,'BL-001');assert.equal(JSON.stringify(doc),before);assert.deepEqual(requirementHistory(doc,'HT-001'),old);
   commit(doc,'requirements',d=>upsert(d,{...d.requirements[0],title:'Locally recorded revision'}));const local=structuredClone(doc.requirementHistory);
   const incoming=structuredClone(doc);incoming.requirements[0].revision+=4;incoming.requirements[0].title='Imported newer revision';incoming.requirementHistory={'HT-001':{complete:true,events:[{date:'1900-01-01',actor:{id:'forged'}}]}};
-  commit(doc,'import',d=>reconcileWorkspace(d,incoming));assert.deepEqual(doc.requirementHistory['HT-001'].events[0],local['HT-001'].events[0]);const h=requirementHistory(doc,'HT-001');assert.equal(h.items[0].source,'import');assert.equal(h.items[0].revisionGap,true);assert.equal(h.lifecycle.created.state,'unknown');assert.equal(h.lifecycle.last_approved.state,'unknown');assert.equal(JSON.stringify(doc.baselines),frozen);
+  commit(doc,'import',d=>{d.requirements=incoming.requirements;});assert.deepEqual(doc.requirementHistory['HT-001'].events[0],local['HT-001'].events[0]);const h=requirementHistory(doc,'HT-001');assert.equal(h.items[0].source,'import');assert.equal(h.items[0].revisionGap,true);assert.equal(h.lifecycle.created.state,'unknown');assert.equal(h.lifecycle.last_approved.state,'unknown');assert.equal(JSON.stringify(doc.baselines),frozen);
   const omitted=structuredClone(doc);delete omitted.requirementHistory;const events=structuredClone(doc.requirementHistory);commit(doc,'import',d=>reconcileWorkspace(d,omitted));assert.deepEqual(doc.requirementHistory,events);
 });
 test('a later imported revision gap preserves an already-known first approval',()=>{
   const doc=workspace();commit(doc,'requirements',d=>upsert(d,input({status:'Approved'})));
   const first=requirementHistory(doc,'HT-001').lifecycle.first_approved;
   const incoming=structuredClone(doc);incoming.requirements[0].revision+=4;incoming.requirements[0].title='Imported after approval';
-  commit(doc,'import',d=>reconcileWorkspace(d,incoming));
+  commit(doc,'import',d=>{d.requirements=incoming.requirements;});
   assert.equal(requirementHistory(doc,'HT-001').coverage.state,'partial');assert.deepEqual(requirementHistory(doc,'HT-001').lifecycle.first_approved,first);
 });

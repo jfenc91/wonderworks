@@ -1,3 +1,4 @@
+import {acceptRequirements} from './fixtures/accepted-requirements.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const origin=process.env.WONDERWORKS_TEST_URL??'http://127.0.0.1:5173';
@@ -5,11 +6,12 @@ if(!['127.0.0.1','localhost'].includes(new URL(origin).hostname))throw Error('Us
 test('conditional workspace reads cover every committed version without changing data; stale writes expose reconciliation version',async()=>{
   async function write(body,status=200){const r=await fetch(origin+'/api/workspace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();assert.equal(r.status,status,JSON.stringify(d));return d;}
   let doc=await write({action:'project',name:'CP-006 conditional reads QA (local)',prefix:'LQ'});
+  const accept=async({requirements})=>doc=await acceptRequirements(doc,requirements,write);
   const read=since=>fetch(origin+'/api/workspace?'+new URLSearchParams({project:doc.id,since:String(since)}));
   const mutate=async(action,data={})=>doc=await write({action,project:doc.id,version:doc.version,...data});
   const unchanged=async()=>{const r=await read(doc.version);assert.equal(r.status,304);assert.equal(await r.text(),'');assert.equal(r.headers.get('cache-control'),'no-store');};
   await unchanged();await mutate('section',{section:{title:'Live checks',description:''}});
-  await mutate('requirements',{requirements:[{section:doc.sections[0].id,title:'Original behavior',description:'Observe synchronized versioned changes.',criteria:['Changes become visible.'],priority:'High',status:'Draft'}]});
+  await accept({requirements:[{section:doc.sections[0].id,title:'Original behavior',description:'Observe synchronized versioned changes.',criteria:['Changes become visible.'],priority:'High',status:'Draft'}]});
   await mutate('baseline',{name:'Frozen initial version'});const frozen=structuredClone(doc.baselines);
   const accepted=structuredClone(doc.requirements),setVersion=doc.requirementsVersion,old=doc.version;
   await mutate('proposal',{proposal:{title:'Proposal only change'}});assert.equal(doc.requirementsVersion,setVersion);

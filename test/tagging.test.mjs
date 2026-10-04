@@ -68,8 +68,8 @@ test('legacy import preserves frozen field absence, normalized identity and none
   assert.throws(()=>reconcileWorkspace(doc,omitted),/TG-001: include tags explicitly/);assert.deepEqual(doc,before);
   const invalid=structuredClone(doc);invalid.requirements[0].tags=['invalid!'];assert.throws(()=>reconcileWorkspace(doc,invalid),/TG-001: Tag 1/);assert.deepEqual(doc,before);
   const altered=structuredClone(doc);altered.baselines[0].requirements[0].tags=[];assert.throws(()=>reconcileWorkspace(doc,altered),/existing baselines/);
-  const clear=structuredClone(doc);clear.requirements[0].tags=[];assert.throws(()=>reconcileWorkspace(doc,clear),/revision/);clear.requirements[0].revision++;reconcileWorkspace(doc,clear);assert.deepEqual(tagsOf(doc.requirements[0]),[]);assert.equal(JSON.stringify(doc.baselines),oldSnapshot);
-  snapshot(doc,'New snapshot');assert.deepEqual(doc.baselines[0].requirements[0].tags,[]);
+  const clear=structuredClone(doc);clear.requirements[0].tags=[];assert.throws(()=>reconcileWorkspace(doc,clear),/revision/);clear.requirements[0].revision++;assert.throws(()=>reconcileWorkspace(doc,clear),/Draft proposal/);assert.deepEqual(doc,before);assert.equal(JSON.stringify(doc.baselines),oldSnapshot);
+  snapshot(doc,'New snapshot');assert.deepEqual(doc.baselines[0].requirements[0].tags,['mcp']);
 });
 
 test('filters combine exact Any/All, Untagged, text and context; counts exclude tag restriction',()=>{

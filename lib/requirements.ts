@@ -31,8 +31,11 @@ export function reconcileWorkspace(current:Workspace,input:unknown){
   for(const r of current.requirements){
     const next=imported.requirements.find(n=>n.id===r.id);
     if(next?.tags===undefined&&tagsOf(r).length)throw Error(r.id+': include tags explicitly when importing a tagged requirement');
-    if(!next||next.revision<r.revision||(next.revision===r.revision&&canonical({...next,tags:tagsOf(next)})!==canonical({...r,tags:tagsOf(r)})))throw Error('Import conflicts with an existing requirement revision: '+r.id);
+    if(!next||next.revision<r.revision||(next.revision===r.revision&&canonical({...next,tags:tagsOf(next)})!==canonical({...r,tags:tagsOf(r)})))throw Error('Import conflicts with an existing requirement revision: '+r.id+'. Stage requirement changes in a Draft proposal and review before Apply.');
   }
+  // Imports cannot manufacture accepted revisions or applied proposal outcomes.
+  const accepted=(items:Requirement[])=>items.map(r=>({...r,tags:tagsOf(r)})).sort((a,b)=>a.id.localeCompare(b.id));
+  if(canonical(accepted(imported.requirements))!==canonical(accepted(current.requirements)))throw Error('Import cannot change accepted requirements. Stage requirement changes in an explicit Draft proposal, then submit for review and Apply.');
   for(const e of current.evidence){const next=imported.evidence.find(n=>n.id===e.id);if(!next||canonical(next)!==canonical(e))throw Error('Import cannot change existing evidence');}
   if(new Set(imported.requirements.map(r=>r.id)).size!==imported.requirements.length||new Set(imported.sections.map(s=>s.id)).size!==imported.sections.length||new Set(imported.baselines.map(b=>b.id)).size!==imported.baselines.length)throw Error('Import has duplicate IDs');
   for(const r of imported.requirements){if(!imported.sections.some(s=>s.id===r.section)||r.links.some(id=>!imported.requirements.some(n=>n.id===id)))throw Error('Import has missing sections or dependencies');}

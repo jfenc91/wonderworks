@@ -34,7 +34,7 @@ async function paginate<T>(items:T[],args:Record<string,unknown>,scope:unknown,r
   return {items:items.slice(offset,end),...(end<items.length?{next_cursor:btoa(JSON.stringify({q:queryHash,v:revisionHash,o:end}))}:{})};
 }
 
-function stage(doc:Workspace,proposalId:string,operations:any[]){
+export function stage(doc:Workspace,proposalId:string,operations:any[]){
   const p=getProposal(doc,proposalId,true),refs:Record<string,string>={};
   // Allocate all new IDs first so forward references inside this atomic batch work.
   for(const op of operations)if(op.op==='add'){

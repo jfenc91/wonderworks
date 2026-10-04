@@ -1,3 +1,4 @@
+import {acceptRequirements} from './fixtures/accepted-requirements.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -10,6 +11,7 @@ async function request(body,status=200){
 }
 test('repository links, versioned snapshots, reviewed batches, and concurrent changes',async t=>{
   let doc=await request({action:'project',name:'Workflow QA (local)',prefix:'QA'});
+  const accept=async({requirements})=>doc=await acceptRequirements(doc,requirements,request);
   const mutate=async(action,payload={},status=200)=>{
     const result=await request({project:doc.id,version:doc.version,action,...payload},status);
     if(status===200)doc=result;return result;
@@ -17,7 +19,7 @@ test('repository links, versioned snapshots, reviewed batches, and concurrent ch
   const read=async()=>{const response=await fetch(origin+'/api/workspace?project='+doc.id);assert.equal(response.status,200);return response.json();};
   await mutate('section',{section:{title:'Core behavior',description:'Local workflow verification'}});
   const input=(title,links=[])=>({section:doc.sections[0].id,title,description:'A measurable behavior for the workflow test.',criteria:['The behavior is observable.'],priority:'High',status:'Draft',parameters:{enabled:true},links});
-  await mutate('requirements',{requirements:[input('Keep this requirement'),input('Revise this requirement'),input('Remove this requirement')]});
+  await accept({requirements:[input('Keep this requirement'),input('Revise this requirement'),input('Remove this requirement')]});
   const originalRequirements=structuredClone(doc.requirements),originalVersion=doc.requirementsVersion;
   let proposalId;
   await t.test('repository metadata persists without changing the requirement-set version',async()=>{
@@ -45,30 +47,30 @@ test('repository links, versioned snapshots, reviewed batches, and concurrent ch
     await mutate('proposal_requirement',{id:proposalId,requirement:{...originalRequirements[0],title:'Cannot edit a submitted proposal'}},400);
   });
   await t.test('stale proposals cannot overwrite latest changes and refresh keeps unrelated edits',async()=>{
-    await mutate('requirements',{requirements:[{...doc.requirements[0],title:'Latest independent edit'}]});
+    await accept({requirements:[{...doc.requirements[0],title:'Latest independent edit'}]});
     await mutate('proposal_review',{id:proposalId,review:{decision:'apply'}},400);
     await mutate('proposal_rebase',{id:proposalId,resolutions:{}});
-    assert.equal(doc.proposals[0].status,'Draft');
-    assert.equal(doc.proposals[0].requirements[0].title,'Latest independent edit');
-    assert.equal(doc.proposals[0].requirements[1].title,'Revised by proposal');
-    assert.equal(doc.proposals[0].baseVersion,doc.requirementsVersion);
+    assert.equal(doc.proposals.find(p=>p.id===proposalId).status,'Draft');
+    assert.equal(doc.proposals.find(p=>p.id===proposalId).requirements[0].title,'Latest independent edit');
+    assert.equal(doc.proposals.find(p=>p.id===proposalId).requirements[1].title,'Revised by proposal');
+    assert.equal(doc.proposals.find(p=>p.id===proposalId).baseVersion,doc.requirementsVersion);
   });
   await t.test('overlapping edits require an explicit conflict resolution',async()=>{
-    await mutate('requirements',{requirements:[{...doc.requirements[1],title:'Conflicting latest edit'}]});
+    await accept({requirements:[{...doc.requirements[1],title:'Conflicting latest edit'}]});
     const before=structuredClone(doc);
     await mutate('proposal_rebase',{id:proposalId,resolutions:{}},400);
     assert.deepEqual((await read()).proposals,before.proposals);
     await mutate('proposal_rebase',{id:proposalId,resolutions:{[originalRequirements[1].id]:'proposed'}});
-    assert.equal(doc.proposals[0].requirements[1].title,'Revised by proposal');
-    assert.equal(doc.proposals[0].requirements[1].revision,doc.requirements[1].revision+1);
+    assert.equal(doc.proposals.find(p=>p.id===proposalId).requirements[1].title,'Revised by proposal');
+    assert.equal(doc.proposals.find(p=>p.id===proposalId).requirements[1].revision,doc.requirements[1].revision+1);
     await mutate('proposal_submit',{id:proposalId});
   });
   await t.test('applying is atomic, advances the set version once and freezes the result',async()=>{
     const version=doc.requirementsVersion;
     await mutate('proposal_review',{id:proposalId,review:{decision:'apply',note:'Reviewed the full batch.'}});
-    assert.equal(doc.requirementsVersion,version+1);assert.equal(doc.proposals[0].status,'Applied');
-    assert.equal(doc.proposals[0].appliedVersion,doc.requirementsVersion);
-    assert.equal(doc.proposals[0].appliedSnapshot,doc.baselines[0].id);
+    assert.equal(doc.requirementsVersion,version+1);assert.equal(doc.proposals.find(p=>p.id===proposalId).status,'Applied');
+    assert.equal(doc.proposals.find(p=>p.id===proposalId).appliedVersion,doc.requirementsVersion);
+    assert.equal(doc.proposals.find(p=>p.id===proposalId).appliedSnapshot,doc.baselines[0].id);
     assert.deepEqual(doc.baselines[0].requirements,doc.requirements);
     assert.deepEqual(doc.baselines.find(b=>b.id===originalSnapshot.id),originalSnapshot);
     assert.equal(doc.requirements.length,3);
@@ -91,12 +93,12 @@ test('repository links, versioned snapshots, reviewed batches, and concurrent ch
   await t.test('invalid batch dependencies are rejected and staging can be undone',async()=>{
     await mutate('proposal',{proposal:{title:'Dependency validation'}});const id=doc.proposals[0].id;
     const dependent=doc.requirements.find(r=>r.links.length),target=dependent.links[0];
-    await mutate('proposal_delete',{id,requirementId:target});
+    await mutate('proposal_delete',{id,requirementId:target},400);
     await mutate('proposal_submit',{id},400);
     await mutate('proposal_restore',{id,requirementId:target});
     await mutate('proposal_submit',{id},400); // now an empty diff
     const a=doc.proposals[0].requirements.find(r=>r.id===target);
-    await mutate('proposal_requirement',{id,requirement:{...a,links:[dependent.id]}});
+    await mutate('proposal_requirement',{id,requirement:{...a,links:[dependent.id]}},400);
     await mutate('proposal_submit',{id},400); // dependency cycle
     await mutate('proposal_restore',{id,requirementId:target});
     assert.deepEqual((await read()).requirements,doc.requirements);
@@ -113,6 +115,7 @@ test('repository links, versioned snapshots, reviewed batches, and concurrent ch
 
 test('IDs are reserved across proposals and empty sets can be snapshotted',async()=>{
   let doc=await request({action:'project',name:'Empty set QA (local)',prefix:'EQ'});
+  const accept=async({requirements})=>doc=await acceptRequirements(doc,requirements,request);
   async function mutate(action,data){doc=await request({action,project:doc.id,version:doc.version,...data});}
   await mutate('baseline',{name:'Empty starting point'});assert.deepEqual(doc.baselines[0].requirements,[]);
   await mutate('section',{section:{title:'Behavior',description:''}});
@@ -121,6 +124,6 @@ test('IDs are reserved across proposals and empty sets can be snapshotted',async
   const first=doc.proposals[0].requirements[0].id;
   await mutate('proposal',{proposal:{title:'Second reserved ID'}});await mutate('proposal_requirement',{id:doc.proposals[0].id,requirement:req});
   const second=doc.proposals[0].requirements[0].id;
-  await mutate('requirements',{requirements:[req]});
+  await accept({requirements:[req]});
   assert.equal(new Set([first,second,doc.requirements[0].id]).size,3);
 });
