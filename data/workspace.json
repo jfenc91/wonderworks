@@ -1,0 +1,1126 @@
+{
+  "id": "asteroids",
+  "prefix": "AST",
+  "name": "Asteroids",
+  "version": 7,
+  "sections": [
+    {
+      "title": "Vision & experience",
+      "description": "A complete arcade experience, ready in one action.",
+      "id": "a47d7f8f-84d7-444d-abfd-6913d20c1824"
+    },
+    {
+      "title": "Flight & controls",
+      "description": "Precise input. Momentum you can feel.",
+      "id": "696a7c21-525d-4949-a524-c0ffcc611cad"
+    },
+    {
+      "title": "Combat & hazards",
+      "description": "Readable danger and satisfying destruction.",
+      "id": "cef09a1d-2339-479d-b58f-b7eb25c39805"
+    },
+    {
+      "title": "Progression & scoring",
+      "description": "Every run should make you want one more.",
+      "id": "299a0c43-ef3f-4f2d-aaa3-163deccc4696"
+    },
+    {
+      "title": "Presentation & quality",
+      "description": "A polished, accessible vector arcade.",
+      "id": "d60132be-cf86-4f8c-839b-b4e78ce36eab"
+    }
+  ],
+  "requirements": [
+    {
+      "section": "a47d7f8f-84d7-444d-abfd-6913d20c1824",
+      "title": "A complete vector arcade",
+      "description": "Deliver a standalone, single-player Asteroids game. The player pilots a triangular spacecraft, destroys asteroids and saucers, survives escalating waves, and chases a personal best. The game has its own URL and no requirements-editor interface.",
+      "criteria": [
+        "The game opens on a game-native title screen with a visible play action.",
+        "A run can progress from title to multiple waves, loss of all lives, game over, and a fresh run.",
+        "All gameplay behavior is governed by this requirements baseline; source comments link behavior to requirement IDs."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-001",
+      "revision": 1
+    },
+    {
+      "section": "a47d7f8f-84d7-444d-abfd-6913d20c1824",
+      "title": "Start quickly, restart cleanly",
+      "description": "Enter or the Start run button begins a new run. The HUD displays score, wave, remaining ships, and personal best. Restart resets the entire run while preserving only device-local best score and preferences.",
+      "criteria": [
+        "Start creates a centered ship facing upward with zero velocity.",
+        "A new run starts with the initial life count and wave one.",
+        "Restart clears bullets, hazards, particles, timers, and the previous score."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {
+        "initialLives": 3
+      },
+      "links": [],
+      "id": "AST-002",
+      "revision": 1
+    },
+    {
+      "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+      "title": "Momentum-based flight",
+      "description": "Left/right arrows or A/D rotate the ship. Up or W applies forward thrust. The ship coasts when thrust is released, with gentle drag and a capped top speed. Turning is independent of movement.",
+      "criteria": [
+        "Input remains responsive with thrust, rotation, and firing held together.",
+        "Velocity never exceeds maxSpeed.",
+        "Equivalent input over the same simulated time produces equivalent movement."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {
+        "thrust": 300,
+        "maxSpeed": 360,
+        "drag": 0.35,
+        "turnSpeed": 4.5,
+        "shipRadius": 10
+      },
+      "links": [],
+      "id": "AST-003",
+      "revision": 1
+    },
+    {
+      "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+      "title": "A seamless wraparound arena",
+      "description": "Use a fixed logical arena that scales to the available display. Ships, rocks, bullets, and saucer shots wrap across all edges. Collision distance respects the wraparound seam.",
+      "criteria": [
+        "An object leaving any edge reappears at the opposite edge without losing velocity.",
+        "Objects on opposite sides of a seam can collide.",
+        "Resizing the display does not change the logical arena or reset a run."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {
+        "worldWidth": 1280,
+        "worldHeight": 800
+      },
+      "links": [],
+      "id": "AST-004",
+      "revision": 1
+    },
+    {
+      "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+      "title": "Rapid, controlled firing",
+      "description": "Space or the Fire touch control fires forward. Holding fire repeats at a fixed cooldown. Projectiles inherit ship velocity, expire, and have a concurrent count limit.",
+      "criteria": [
+        "Holding fire cannot exceed the specified cadence or count limit.",
+        "Bullets launch from the ship nose and expire after their lifetime.",
+        "A bullet can damage at most one target."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {
+        "bulletSpeed": 620,
+        "bulletLife": 1.1,
+        "fireCooldown": 0.16,
+        "maxBullets": 8
+      },
+      "links": [],
+      "id": "AST-005",
+      "revision": 1
+    },
+    {
+      "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+      "title": "Hyperspace escape",
+      "description": "Shift or the jump control teleports the ship to a sampled safe location, clears its velocity, and grants brief protection. Show cooldown readiness. If no safe sampled location exists, preserve the current position and do not consume cooldown.",
+      "criteria": [
+        "Jump is unavailable while its cooldown is active.",
+        "A successful jump grants the configured protection and cooldown.",
+        "Safe-position search considers rocks, saucers, and hostile shots."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {
+        "hyperCooldown": 8,
+        "hyperProtection": 1.5,
+        "safeAttempts": 24
+      },
+      "links": [],
+      "id": "AST-006",
+      "revision": 1
+    },
+    {
+      "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+      "title": "Pause without surprises",
+      "description": "P, Escape, and the pause control toggle pause during a live run. Losing browser focus or hiding the page pauses automatically. Resume always requires an explicit action.",
+      "criteria": [
+        "While paused, physics, wave timers, and enemy timers do not advance.",
+        "Input is cleared on blur and pause, so keys cannot stick.",
+        "The overlay offers Resume and Restart."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-007",
+      "revision": 1
+    },
+    {
+      "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+      "title": "Comfortable touch controls",
+      "description": "Provide large, labeled controls for left, right, thrust, fire, and hyperspace when touch input is available. Controls support simultaneous pointers and release on pointer cancellation.",
+      "criteria": [
+        "A player can turn, thrust, and shoot simultaneously.",
+        "Dragging off a held control or pointer cancellation releases it.",
+        "Touch controls do not scroll or select the page."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-008",
+      "revision": 1
+    },
+    {
+      "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+      "title": "Distinct asteroid sizes",
+      "description": "Spawn irregular vector-outline asteroids in large, medium, and small tiers. Randomize shape, direction, rotation, and speed while keeping their silhouettes legible.",
+      "criteria": [
+        "Large, medium, and small rocks have their specified collision radii.",
+        "Asteroids travel in varied directions and wrap at arena edges.",
+        "Wave spawning keeps rocks away from the ship."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {
+        "largeRadius": 44,
+        "mediumRadius": 25,
+        "smallRadius": 13,
+        "asteroidSpeed": 45,
+        "asteroidJitter": 35
+      },
+      "links": [],
+      "id": "AST-009",
+      "revision": 1
+    },
+    {
+      "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+      "title": "Split, scatter, destroy",
+      "description": "A projectile destroys its target. A large asteroid becomes two medium asteroids, a medium becomes two small, and a small disappears. Children diverge from the parent trajectory and cannot be hit by the same spent projectile.",
+      "criteria": [
+        "One large asteroid yields two medium rocks.",
+        "One medium asteroid yields two small rocks.",
+        "A spent bullet is removed immediately and can award only one hit."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-010",
+      "revision": 1
+    },
+    {
+      "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+      "title": "Fair collision handling",
+      "description": "Use circular hit regions and wrap-aware distance. Ship contact with a rock, saucer, or hostile shot costs one life only when unprotected. Remove consumed hostile shots. Friendly bullets destroy rocks or saucers, never the player.",
+      "criteria": [
+        "A collision costs exactly one life.",
+        "Invulnerable and respawning ships cannot lose another life.",
+        "Ship hit regions stay inside the visible ship silhouette."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-011",
+      "revision": 1
+    },
+    {
+      "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+      "title": "Safe respawn and protection",
+      "description": "After a fatal collision, show debris and delay respawn. Sample safe positions before returning the ship, with visible blinking protection. If no safe position is available, retry after a delay.",
+      "criteria": [
+        "New runs and respawns grant the configured protection period.",
+        "Respawn candidates have no nearby rock, saucer, or hostile shot.",
+        "The player retains score and wave after a life is lost."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {
+        "spawnSafeRadius": 140,
+        "invulnerable": 3,
+        "respawnDelay": 1.2
+      },
+      "links": [],
+      "id": "AST-012",
+      "revision": 1
+    },
+    {
+      "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+      "title": "An occasional saucer threat",
+      "description": "During active play, periodically introduce a saucer crossing the arena. It fires aimed, slightly imperfect shots at the player, expires after its lifetime, and awards score when destroyed. Only one saucer may exist at once.",
+      "criteria": [
+        "The saucer is visually distinct and shoots hostile projectiles.",
+        "Saucer fire pauses and stops while the player is respawning.",
+        "Destroying a saucer awards the configured score once."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {
+        "ufoInterval": 22,
+        "ufoSpeed": 90,
+        "ufoFire": 1.6,
+        "ufoBulletSpeed": 180,
+        "ufoRadius": 18,
+        "ufoLife": 18,
+        "ufoScore": 200
+      },
+      "links": [],
+      "id": "AST-013",
+      "revision": 1
+    },
+    {
+      "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+      "title": "Escalating, finite waves",
+      "description": "Begin with the configured number of large rocks. Clearing all asteroids starts a short intermission, then the next wave. Add rocks up to a cap and increase speed by wave. Clear hostile shots at wave transition.",
+      "criteria": [
+        "First wave contains exactly waveStart large rocks.",
+        "Subsequent wave counts follow min(waveMax, waveStart + (wave - 1) \u00d7 waveIncrement).",
+        "New waves begin only once after the intermission."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {
+        "waveStart": 4,
+        "waveIncrement": 1,
+        "waveMax": 12,
+        "waveSpeedFactor": 0.1,
+        "waveDelay": 2
+      },
+      "links": [],
+      "id": "AST-014",
+      "revision": 1
+    },
+    {
+      "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+      "title": "Reward precision",
+      "description": "Award score when a friendly bullet destroys a target: large, medium, and small asteroids use distinct values; saucers use their own value. Score is visible immediately.",
+      "criteria": [
+        "Scores for each asteroid size match its parameter.",
+        "Splitting a rock awards its own size score, not the children\u2019s scores.",
+        "No score is awarded for ship collisions."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {
+        "largeScore": 20,
+        "mediumScore": 50,
+        "smallScore": 100
+      },
+      "links": [],
+      "id": "AST-015",
+      "revision": 1
+    },
+    {
+      "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+      "title": "Lives and earned recovery",
+      "description": "Track remaining ships visibly. Award one bonus ship at each extra-life score threshold, up to a maximum. Track threshold crossings independently of the current number of lives.",
+      "criteria": [
+        "Crossing one threshold grants one life, up to the cap.",
+        "The same threshold cannot grant a life twice.",
+        "Losing the last ship ends the run."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {
+        "extraLifeScore": 10000,
+        "maxLives": 6
+      },
+      "links": [],
+      "id": "AST-016",
+      "revision": 1
+    },
+    {
+      "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+      "title": "A satisfying game over",
+      "description": "When the final life is lost, stop gameplay and show the final score, best score, wave reached, and a Restart run action. Do not auto-restart.",
+      "criteria": [
+        "The final score remains readable until the player restarts.",
+        "Restart works with Enter and the visible button.",
+        "A restart does not retain hazards or timers from the previous run."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-017",
+      "revision": 1
+    },
+    {
+      "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+      "title": "A personal best on this device",
+      "description": "Persist only the player\u2019s personal best score and interface preferences in browser storage. Clearly label the best as device-local. Storage failure must not prevent gameplay.",
+      "criteria": [
+        "A best score survives reload in the same browser.",
+        "An unavailable or corrupted storage value falls back safely.",
+        "The game does not claim a shared or online leaderboard."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-018",
+      "revision": 1
+    },
+    {
+      "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+      "title": "Luminous vector presentation",
+      "description": "Use a near-black field, warm ivory typography, a mint ship, soft blue-gray asteroid outlines, and coral hostile objects. Add a sparse star field, subtle glow, readable HUD, and vector saucer geometry. Avoid distracting backgrounds.",
+      "criteria": [
+        "The ship, projectiles, asteroids, and hostile shots are distinguishable.",
+        "Score and lives stay readable over the game field.",
+        "The title screen is a designed arcade surface, not a marketing page."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {
+        "shipColor": "#c6f4df",
+        "rockColor": "#789c9a",
+        "enemyColor": "#ff907c",
+        "accentColor": "#f2ae77",
+        "backgroundColor": "#090f13"
+      },
+      "links": [],
+      "id": "AST-019",
+      "revision": 1
+    },
+    {
+      "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+      "title": "Tactile but restrained effects",
+      "description": "Firing, thrust, asteroid breaks, and ship loss have brief particles and appropriate feedback. Cap live particles. Shake only on ship loss; disable shake and reduce particles when reduced motion is preferred.",
+      "criteria": [
+        "Debris expires and is removed.",
+        "Particle count remains bounded.",
+        "Reduced motion keeps all game information and controls available."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {
+        "burstParticles": 18,
+        "particleLife": 0.65,
+        "shakeMagnitude": 5,
+        "maxParticles": 300
+      },
+      "links": [],
+      "id": "AST-020",
+      "revision": 1
+    },
+    {
+      "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+      "title": "Synthesized arcade audio",
+      "description": "Create lightweight synthesized tones for firing, destruction, ship loss, and wave start, with thrust feedback. Initialize audio only after a player gesture. Include a persistent mute toggle.",
+      "criteria": [
+        "Muted mode produces no gameplay audio.",
+        "Lack of audio support does not prevent a run.",
+        "Sound does not continue when the game is paused or hidden."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {
+        "audioEnabled": true
+      },
+      "links": [],
+      "id": "AST-021",
+      "revision": 1
+    },
+    {
+      "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+      "title": "Responsive without compromise",
+      "description": "Fit the complete logical arena into the available space with proportional scaling and letterboxing. Keep controls and overlays usable on mobile portrait and desktop. Canvas pixels scale with device pixel ratio.",
+      "criteria": [
+        "The arena does not stretch or crop its logical coordinates.",
+        "HUD and touch controls fit at a 390-pixel viewport.",
+        "Fullscreen can be entered and exited when supported."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-022",
+      "revision": 1
+    },
+    {
+      "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+      "title": "Stable simulation and bounded work",
+      "description": "Use a fixed simulation timestep driven by animation frames. Cap elapsed time after a long frame and remove expired entities. Keep rendering separate from state updates for deterministic verification.",
+      "criteria": [
+        "Equivalent elapsed time at different frame rates gives equivalent results.",
+        "Returning from a hidden tab does not jump the simulation forward.",
+        "Particles, bullets, and enemies have bounded counts or lifetimes."
+      ],
+      "priority": "Critical",
+      "status": "Approved",
+      "parameters": {
+        "fixedStep": 0.008333333333333333,
+        "maxFrame": 0.05
+      },
+      "links": [],
+      "id": "AST-023",
+      "revision": 1
+    },
+    {
+      "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+      "title": "Accessible controls and legible state",
+      "description": "Use semantic buttons, visible keyboard focus, text alternatives for icons, a control guide, and readable contrast. Honor reduced motion, retain mute preference, and announce game over without announcing every frame.",
+      "criteria": [
+        "Every non-gameplay control works with keyboard navigation.",
+        "Pause, mute, fullscreen, and restart have accessible names.",
+        "Reduced-motion mode disables screen shake."
+      ],
+      "priority": "High",
+      "status": "Approved",
+      "parameters": {},
+      "links": [],
+      "id": "AST-024",
+      "revision": 1
+    }
+  ],
+  "history": [
+    {
+      "id": "8715c7c6-15bb-4d74-b3ff-72f21de4015d",
+      "date": "2026-10-04T00:58:51.120Z",
+      "message": "BL-001 created \u00b7 Asteroids 1.0 \u00b7 implementation contract"
+    },
+    {
+      "id": "3bd400bd-0e4c-404a-b1a0-580cbda32826",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-024 created \u00b7 Accessible controls and legible state"
+    },
+    {
+      "id": "3d99fdc3-9748-4d72-bf57-2d6201efc3ce",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-023 created \u00b7 Stable simulation and bounded work"
+    },
+    {
+      "id": "2ea1133b-50cc-422b-9cba-b042ee8885d2",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-022 created \u00b7 Responsive without compromise"
+    },
+    {
+      "id": "2480126f-f024-4f2e-98ed-5497e794cd79",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-021 created \u00b7 Synthesized arcade audio"
+    },
+    {
+      "id": "d8d7b34e-79af-47c1-b85c-dfa9e5251ceb",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-020 created \u00b7 Tactile but restrained effects"
+    },
+    {
+      "id": "a6235517-b910-4f63-a46c-f25a31a27289",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-019 created \u00b7 Luminous vector presentation"
+    },
+    {
+      "id": "f358666e-2c47-4358-9110-ee914928c487",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-018 created \u00b7 A personal best on this device"
+    },
+    {
+      "id": "806092c3-97f4-491b-bf72-a08a8e1e957d",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-017 created \u00b7 A satisfying game over"
+    },
+    {
+      "id": "c480a8b4-298c-4124-8333-6e5b3ee35ae3",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-016 created \u00b7 Lives and earned recovery"
+    },
+    {
+      "id": "e2f67a66-053d-4e5d-b1da-4414e7ee721d",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-015 created \u00b7 Reward precision"
+    },
+    {
+      "id": "dfdc82ee-00e7-42e5-84f9-f95c50df77ad",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-014 created \u00b7 Escalating, finite waves"
+    },
+    {
+      "id": "22834238-d5d9-4cd6-b685-9e2c26c48a6f",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-013 created \u00b7 An occasional saucer threat"
+    },
+    {
+      "id": "e238fa88-7ce5-4c83-9632-5becb32dbe4f",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-012 created \u00b7 Safe respawn and protection"
+    },
+    {
+      "id": "7ff712fa-1e6d-4a99-8293-07aee006ef6d",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-011 created \u00b7 Fair collision handling"
+    },
+    {
+      "id": "da3f9324-6be1-4fda-825e-7717dde0b38c",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-010 created \u00b7 Split, scatter, destroy"
+    },
+    {
+      "id": "af1df3c4-cc85-4107-afbc-c6588fc35e4b",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-009 created \u00b7 Distinct asteroid sizes"
+    },
+    {
+      "id": "87407c15-8fd2-4191-ae16-7303d837613e",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-008 created \u00b7 Comfortable touch controls"
+    },
+    {
+      "id": "ef321eaa-d10c-402f-850d-4dc61bf5061c",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-007 created \u00b7 Pause without surprises"
+    },
+    {
+      "id": "901449fc-4c84-431d-a452-6570cfcde1de",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-006 created \u00b7 Hyperspace escape"
+    },
+    {
+      "id": "cc88e46e-8f89-4a5d-99cb-7ecbabeda182",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-005 created \u00b7 Rapid, controlled firing"
+    },
+    {
+      "id": "7e060ab8-1202-4634-b9d6-c401b3600ef3",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-004 created \u00b7 A seamless wraparound arena"
+    },
+    {
+      "id": "3ae3b1a4-2c99-4c14-884e-8a94589eeec5",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-003 created \u00b7 Momentum-based flight"
+    },
+    {
+      "id": "0ee5cbe9-8899-49ab-9fdc-70528689a574",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-002 created \u00b7 Start quickly, restart cleanly"
+    },
+    {
+      "id": "3e2f3395-d752-4d8c-ac33-5d288cb4c371",
+      "date": "2026-10-04T00:58:51.109Z",
+      "message": "AST-001 created \u00b7 A complete vector arcade"
+    },
+    {
+      "id": "d2a534db-1aac-4f8d-a0f2-9601135b03cf",
+      "date": "2026-10-04T00:58:51.098Z",
+      "message": "Section created \u00b7 Presentation & quality"
+    },
+    {
+      "id": "ba7a84f4-2455-4741-98a4-ca4e8ab3f5cc",
+      "date": "2026-10-04T00:58:51.089Z",
+      "message": "Section created \u00b7 Progression & scoring"
+    },
+    {
+      "id": "b78f9176-79c7-43f5-85ad-187ad8832bd5",
+      "date": "2026-10-04T00:58:51.078Z",
+      "message": "Section created \u00b7 Combat & hazards"
+    },
+    {
+      "id": "a773d18e-1d0f-4c75-a4d3-12518267bab2",
+      "date": "2026-10-04T00:58:51.068Z",
+      "message": "Section created \u00b7 Flight & controls"
+    },
+    {
+      "id": "94c181d1-c8c8-41d1-a54d-aef6bc62fabb",
+      "date": "2026-10-04T00:58:51.056Z",
+      "message": "Section created \u00b7 Vision & experience"
+    }
+  ],
+  "baselines": [
+    {
+      "id": "BL-001",
+      "date": "2026-10-04T00:58:51.120Z",
+      "name": "Asteroids 1.0 \u00b7 implementation contract",
+      "requirements": [
+        {
+          "section": "a47d7f8f-84d7-444d-abfd-6913d20c1824",
+          "title": "A complete vector arcade",
+          "description": "Deliver a standalone, single-player Asteroids game. The player pilots a triangular spacecraft, destroys asteroids and saucers, survives escalating waves, and chases a personal best. The game has its own URL and no requirements-editor interface.",
+          "criteria": [
+            "The game opens on a game-native title screen with a visible play action.",
+            "A run can progress from title to multiple waves, loss of all lives, game over, and a fresh run.",
+            "All gameplay behavior is governed by this requirements baseline; source comments link behavior to requirement IDs."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-001",
+          "revision": 1
+        },
+        {
+          "section": "a47d7f8f-84d7-444d-abfd-6913d20c1824",
+          "title": "Start quickly, restart cleanly",
+          "description": "Enter or the Start run button begins a new run. The HUD displays score, wave, remaining ships, and personal best. Restart resets the entire run while preserving only device-local best score and preferences.",
+          "criteria": [
+            "Start creates a centered ship facing upward with zero velocity.",
+            "A new run starts with the initial life count and wave one.",
+            "Restart clears bullets, hazards, particles, timers, and the previous score."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {
+            "initialLives": 3
+          },
+          "links": [],
+          "id": "AST-002",
+          "revision": 1
+        },
+        {
+          "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+          "title": "Momentum-based flight",
+          "description": "Left/right arrows or A/D rotate the ship. Up or W applies forward thrust. The ship coasts when thrust is released, with gentle drag and a capped top speed. Turning is independent of movement.",
+          "criteria": [
+            "Input remains responsive with thrust, rotation, and firing held together.",
+            "Velocity never exceeds maxSpeed.",
+            "Equivalent input over the same simulated time produces equivalent movement."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {
+            "thrust": 300,
+            "maxSpeed": 360,
+            "drag": 0.35,
+            "turnSpeed": 4.5,
+            "shipRadius": 10
+          },
+          "links": [],
+          "id": "AST-003",
+          "revision": 1
+        },
+        {
+          "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+          "title": "A seamless wraparound arena",
+          "description": "Use a fixed logical arena that scales to the available display. Ships, rocks, bullets, and saucer shots wrap across all edges. Collision distance respects the wraparound seam.",
+          "criteria": [
+            "An object leaving any edge reappears at the opposite edge without losing velocity.",
+            "Objects on opposite sides of a seam can collide.",
+            "Resizing the display does not change the logical arena or reset a run."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {
+            "worldWidth": 1280,
+            "worldHeight": 800
+          },
+          "links": [],
+          "id": "AST-004",
+          "revision": 1
+        },
+        {
+          "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+          "title": "Rapid, controlled firing",
+          "description": "Space or the Fire touch control fires forward. Holding fire repeats at a fixed cooldown. Projectiles inherit ship velocity, expire, and have a concurrent count limit.",
+          "criteria": [
+            "Holding fire cannot exceed the specified cadence or count limit.",
+            "Bullets launch from the ship nose and expire after their lifetime.",
+            "A bullet can damage at most one target."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {
+            "bulletSpeed": 620,
+            "bulletLife": 1.1,
+            "fireCooldown": 0.16,
+            "maxBullets": 8
+          },
+          "links": [],
+          "id": "AST-005",
+          "revision": 1
+        },
+        {
+          "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+          "title": "Hyperspace escape",
+          "description": "Shift or the jump control teleports the ship to a sampled safe location, clears its velocity, and grants brief protection. Show cooldown readiness. If no safe sampled location exists, preserve the current position and do not consume cooldown.",
+          "criteria": [
+            "Jump is unavailable while its cooldown is active.",
+            "A successful jump grants the configured protection and cooldown.",
+            "Safe-position search considers rocks, saucers, and hostile shots."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {
+            "hyperCooldown": 8,
+            "hyperProtection": 1.5,
+            "safeAttempts": 24
+          },
+          "links": [],
+          "id": "AST-006",
+          "revision": 1
+        },
+        {
+          "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+          "title": "Pause without surprises",
+          "description": "P, Escape, and the pause control toggle pause during a live run. Losing browser focus or hiding the page pauses automatically. Resume always requires an explicit action.",
+          "criteria": [
+            "While paused, physics, wave timers, and enemy timers do not advance.",
+            "Input is cleared on blur and pause, so keys cannot stick.",
+            "The overlay offers Resume and Restart."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-007",
+          "revision": 1
+        },
+        {
+          "section": "696a7c21-525d-4949-a524-c0ffcc611cad",
+          "title": "Comfortable touch controls",
+          "description": "Provide large, labeled controls for left, right, thrust, fire, and hyperspace when touch input is available. Controls support simultaneous pointers and release on pointer cancellation.",
+          "criteria": [
+            "A player can turn, thrust, and shoot simultaneously.",
+            "Dragging off a held control or pointer cancellation releases it.",
+            "Touch controls do not scroll or select the page."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-008",
+          "revision": 1
+        },
+        {
+          "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+          "title": "Distinct asteroid sizes",
+          "description": "Spawn irregular vector-outline asteroids in large, medium, and small tiers. Randomize shape, direction, rotation, and speed while keeping their silhouettes legible.",
+          "criteria": [
+            "Large, medium, and small rocks have their specified collision radii.",
+            "Asteroids travel in varied directions and wrap at arena edges.",
+            "Wave spawning keeps rocks away from the ship."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {
+            "largeRadius": 44,
+            "mediumRadius": 25,
+            "smallRadius": 13,
+            "asteroidSpeed": 45,
+            "asteroidJitter": 35
+          },
+          "links": [],
+          "id": "AST-009",
+          "revision": 1
+        },
+        {
+          "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+          "title": "Split, scatter, destroy",
+          "description": "A projectile destroys its target. A large asteroid becomes two medium asteroids, a medium becomes two small, and a small disappears. Children diverge from the parent trajectory and cannot be hit by the same spent projectile.",
+          "criteria": [
+            "One large asteroid yields two medium rocks.",
+            "One medium asteroid yields two small rocks.",
+            "A spent bullet is removed immediately and can award only one hit."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-010",
+          "revision": 1
+        },
+        {
+          "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+          "title": "Fair collision handling",
+          "description": "Use circular hit regions and wrap-aware distance. Ship contact with a rock, saucer, or hostile shot costs one life only when unprotected. Remove consumed hostile shots. Friendly bullets destroy rocks or saucers, never the player.",
+          "criteria": [
+            "A collision costs exactly one life.",
+            "Invulnerable and respawning ships cannot lose another life.",
+            "Ship hit regions stay inside the visible ship silhouette."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-011",
+          "revision": 1
+        },
+        {
+          "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+          "title": "Safe respawn and protection",
+          "description": "After a fatal collision, show debris and delay respawn. Sample safe positions before returning the ship, with visible blinking protection. If no safe position is available, retry after a delay.",
+          "criteria": [
+            "New runs and respawns grant the configured protection period.",
+            "Respawn candidates have no nearby rock, saucer, or hostile shot.",
+            "The player retains score and wave after a life is lost."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {
+            "spawnSafeRadius": 140,
+            "invulnerable": 3,
+            "respawnDelay": 1.2
+          },
+          "links": [],
+          "id": "AST-012",
+          "revision": 1
+        },
+        {
+          "section": "cef09a1d-2339-479d-b58f-b7eb25c39805",
+          "title": "An occasional saucer threat",
+          "description": "During active play, periodically introduce a saucer crossing the arena. It fires aimed, slightly imperfect shots at the player, expires after its lifetime, and awards score when destroyed. Only one saucer may exist at once.",
+          "criteria": [
+            "The saucer is visually distinct and shoots hostile projectiles.",
+            "Saucer fire pauses and stops while the player is respawning.",
+            "Destroying a saucer awards the configured score once."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {
+            "ufoInterval": 22,
+            "ufoSpeed": 90,
+            "ufoFire": 1.6,
+            "ufoBulletSpeed": 180,
+            "ufoRadius": 18,
+            "ufoLife": 18,
+            "ufoScore": 200
+          },
+          "links": [],
+          "id": "AST-013",
+          "revision": 1
+        },
+        {
+          "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+          "title": "Escalating, finite waves",
+          "description": "Begin with the configured number of large rocks. Clearing all asteroids starts a short intermission, then the next wave. Add rocks up to a cap and increase speed by wave. Clear hostile shots at wave transition.",
+          "criteria": [
+            "First wave contains exactly waveStart large rocks.",
+            "Subsequent wave counts follow min(waveMax, waveStart + (wave - 1) \u00d7 waveIncrement).",
+            "New waves begin only once after the intermission."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {
+            "waveStart": 4,
+            "waveIncrement": 1,
+            "waveMax": 12,
+            "waveSpeedFactor": 0.1,
+            "waveDelay": 2
+          },
+          "links": [],
+          "id": "AST-014",
+          "revision": 1
+        },
+        {
+          "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+          "title": "Reward precision",
+          "description": "Award score when a friendly bullet destroys a target: large, medium, and small asteroids use distinct values; saucers use their own value. Score is visible immediately.",
+          "criteria": [
+            "Scores for each asteroid size match its parameter.",
+            "Splitting a rock awards its own size score, not the children\u2019s scores.",
+            "No score is awarded for ship collisions."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {
+            "largeScore": 20,
+            "mediumScore": 50,
+            "smallScore": 100
+          },
+          "links": [],
+          "id": "AST-015",
+          "revision": 1
+        },
+        {
+          "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+          "title": "Lives and earned recovery",
+          "description": "Track remaining ships visibly. Award one bonus ship at each extra-life score threshold, up to a maximum. Track threshold crossings independently of the current number of lives.",
+          "criteria": [
+            "Crossing one threshold grants one life, up to the cap.",
+            "The same threshold cannot grant a life twice.",
+            "Losing the last ship ends the run."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {
+            "extraLifeScore": 10000,
+            "maxLives": 6
+          },
+          "links": [],
+          "id": "AST-016",
+          "revision": 1
+        },
+        {
+          "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+          "title": "A satisfying game over",
+          "description": "When the final life is lost, stop gameplay and show the final score, best score, wave reached, and a Restart run action. Do not auto-restart.",
+          "criteria": [
+            "The final score remains readable until the player restarts.",
+            "Restart works with Enter and the visible button.",
+            "A restart does not retain hazards or timers from the previous run."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-017",
+          "revision": 1
+        },
+        {
+          "section": "299a0c43-ef3f-4f2d-aaa3-163deccc4696",
+          "title": "A personal best on this device",
+          "description": "Persist only the player\u2019s personal best score and interface preferences in browser storage. Clearly label the best as device-local. Storage failure must not prevent gameplay.",
+          "criteria": [
+            "A best score survives reload in the same browser.",
+            "An unavailable or corrupted storage value falls back safely.",
+            "The game does not claim a shared or online leaderboard."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-018",
+          "revision": 1
+        },
+        {
+          "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+          "title": "Luminous vector presentation",
+          "description": "Use a near-black field, warm ivory typography, a mint ship, soft blue-gray asteroid outlines, and coral hostile objects. Add a sparse star field, subtle glow, readable HUD, and vector saucer geometry. Avoid distracting backgrounds.",
+          "criteria": [
+            "The ship, projectiles, asteroids, and hostile shots are distinguishable.",
+            "Score and lives stay readable over the game field.",
+            "The title screen is a designed arcade surface, not a marketing page."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {
+            "shipColor": "#c6f4df",
+            "rockColor": "#789c9a",
+            "enemyColor": "#ff907c",
+            "accentColor": "#f2ae77",
+            "backgroundColor": "#090f13"
+          },
+          "links": [],
+          "id": "AST-019",
+          "revision": 1
+        },
+        {
+          "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+          "title": "Tactile but restrained effects",
+          "description": "Firing, thrust, asteroid breaks, and ship loss have brief particles and appropriate feedback. Cap live particles. Shake only on ship loss; disable shake and reduce particles when reduced motion is preferred.",
+          "criteria": [
+            "Debris expires and is removed.",
+            "Particle count remains bounded.",
+            "Reduced motion keeps all game information and controls available."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {
+            "burstParticles": 18,
+            "particleLife": 0.65,
+            "shakeMagnitude": 5,
+            "maxParticles": 300
+          },
+          "links": [],
+          "id": "AST-020",
+          "revision": 1
+        },
+        {
+          "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+          "title": "Synthesized arcade audio",
+          "description": "Create lightweight synthesized tones for firing, destruction, ship loss, and wave start, with thrust feedback. Initialize audio only after a player gesture. Include a persistent mute toggle.",
+          "criteria": [
+            "Muted mode produces no gameplay audio.",
+            "Lack of audio support does not prevent a run.",
+            "Sound does not continue when the game is paused or hidden."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {
+            "audioEnabled": true
+          },
+          "links": [],
+          "id": "AST-021",
+          "revision": 1
+        },
+        {
+          "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+          "title": "Responsive without compromise",
+          "description": "Fit the complete logical arena into the available space with proportional scaling and letterboxing. Keep controls and overlays usable on mobile portrait and desktop. Canvas pixels scale with device pixel ratio.",
+          "criteria": [
+            "The arena does not stretch or crop its logical coordinates.",
+            "HUD and touch controls fit at a 390-pixel viewport.",
+            "Fullscreen can be entered and exited when supported."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-022",
+          "revision": 1
+        },
+        {
+          "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+          "title": "Stable simulation and bounded work",
+          "description": "Use a fixed simulation timestep driven by animation frames. Cap elapsed time after a long frame and remove expired entities. Keep rendering separate from state updates for deterministic verification.",
+          "criteria": [
+            "Equivalent elapsed time at different frame rates gives equivalent results.",
+            "Returning from a hidden tab does not jump the simulation forward.",
+            "Particles, bullets, and enemies have bounded counts or lifetimes."
+          ],
+          "priority": "Critical",
+          "status": "Approved",
+          "parameters": {
+            "fixedStep": 0.008333333333333333,
+            "maxFrame": 0.05
+          },
+          "links": [],
+          "id": "AST-023",
+          "revision": 1
+        },
+        {
+          "section": "d60132be-cf86-4f8c-839b-b4e78ce36eab",
+          "title": "Accessible controls and legible state",
+          "description": "Use semantic buttons, visible keyboard focus, text alternatives for icons, a control guide, and readable contrast. Honor reduced motion, retain mute preference, and announce game over without announcing every frame.",
+          "criteria": [
+            "Every non-gameplay control works with keyboard navigation.",
+            "Pause, mute, fullscreen, and restart have accessible names.",
+            "Reduced-motion mode disables screen shake."
+          ],
+          "priority": "High",
+          "status": "Approved",
+          "parameters": {},
+          "links": [],
+          "id": "AST-024",
+          "revision": 1
+        }
+      ],
+      "sections": [
+        {
+          "title": "Vision & experience",
+          "description": "A complete arcade experience, ready in one action.",
+          "id": "a47d7f8f-84d7-444d-abfd-6913d20c1824"
+        },
+        {
+          "title": "Flight & controls",
+          "description": "Precise input. Momentum you can feel.",
+          "id": "696a7c21-525d-4949-a524-c0ffcc611cad"
+        },
+        {
+          "title": "Combat & hazards",
+          "description": "Readable danger and satisfying destruction.",
+          "id": "cef09a1d-2339-479d-b58f-b7eb25c39805"
+        },
+        {
+          "title": "Progression & scoring",
+          "description": "Every run should make you want one more.",
+          "id": "299a0c43-ef3f-4f2d-aaa3-163deccc4696"
+        },
+        {
+          "title": "Presentation & quality",
+          "description": "A polished, accessible vector arcade.",
+          "id": "d60132be-cf86-4f8c-839b-b4e78ce36eab"
+        }
+      ]
+    }
+  ],
+  "evidence": []
+}
