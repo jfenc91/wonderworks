@@ -1,6 +1,7 @@
 import {z} from 'zod/v4';
 import type {Workspace,ChangeProposal,HistoryActor,ImplementationCommit} from './types';
-import {canonical} from './workflow';
+import {canonical} from './authored';
+import {synchronizeImplementation} from './lifecycle';
 import {ToolError} from './mcp/errors';
 
 export const implementationInput=z.strictObject({
@@ -30,7 +31,7 @@ export function snapshotAssociations(doc:Workspace,id:string){
   requireSnapshot(doc,id);
   return {...implementationMetadata(doc,id),first_included_proposals:(doc.proposals??[]).filter(p=>p.status==='Applied'&&p.appliedSnapshot===id).map(p=>({id:p.id,title:p.title,appliedVersion:p.appliedVersion??null}))};
 }
-// This mutates only live association metadata. Frozen baselines and proposals are never touched.
+// Association and current lifecycle metadata commit together; frozen records are untouched.
 export function setSnapshotImplementation(doc:Workspace,id:string,input:unknown,actor:HistoryActor,date=new Date().toISOString()){
   requireSnapshot(doc,id);
   const parsed=implementationInput.nullable().safeParse(input);
@@ -51,5 +52,6 @@ export function setSnapshotImplementation(doc:Workspace,id:string,input:unknown,
   const correction={id:crypto.randomUUID(),project_id:doc.id,baseline_id:id,date,actor:structuredClone(actor),before:structuredClone(old),after:structuredClone(next)};
   doc.snapshotImplementations??={};
   doc.snapshotImplementations[id]={implementation_commit:next,updated_at:date,actor:structuredClone(actor),history:[...(doc.snapshotImplementations[id]?.history??[]),correction]};
+  synchronizeImplementation(doc,id);
   return true;
 }

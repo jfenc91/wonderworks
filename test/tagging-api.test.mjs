@@ -17,13 +17,13 @@ test('tagging persists across REST and MCP, filters pages, and preserves review 
   const mutate=async(action,payload={})=>doc=await rest({action,project:project_id,version:doc.version,...payload});
   const write=extra=>({project_id,expected_workspace_version:doc.version,idempotency_key:crypto.randomUUID(),...extra});
   await mutate('section',{section:{title:'Core behavior',description:''}});await mutate('section',{section:{title:'Operations',description:''}});
-  const input=(title,extra={})=>({section:doc.sections[0].id,title,description:'The system preserves the requested behavior.',criteria:['An observable acceptance criterion.'],priority:'High',status:'Draft',parameters:{},links:[],...extra});
+  const input=(title,extra={})=>({section:doc.sections[0].id,title,description:'The system preserves the requested behavior.',criteria:['An observable acceptance criterion.'],priority:'High',parameters:{},links:[],...extra});
   await accept({requirements:[input('Gateway authorization',{tags:[' MCP ','SECURITY','mcp']}),input('Remote catalog',{status:'Approved',tags:['mcp']}),input('Durable operation',{section:doc.sections[1].id,tags:['reliability']}),input('Unclassified behavior')]});
   assert.deepEqual(doc.requirements[0].tags,['mcp','security']);assert.deepEqual(doc.requirements[3].tags,[]);
   await mutate('baseline',{name:'Initial tagged snapshot'});const frozen=structuredClone(doc.baselines[0]);
   await t.test('exact Any/All/Untagged filters and tag text search agree with the UI',async()=>{
     const before=structuredClone(doc);
-    for(const [filters,expected] of [[{tags:['mcp','security']},['TQ-001','TQ-002']],[{tags:['mcp','security'],tag_mode:'all'},['TQ-001']],[{tags:['sec']},[]],[{query:'SECUR'},['TQ-001']],[{untagged_only:true},['TQ-004']],[{tags:['mcp'],status:'Draft',section:doc.sections[0].id},['TQ-001']],[{tags:[]},['TQ-001','TQ-002','TQ-003','TQ-004']]]){
+    for(const [filters,expected] of [[{tags:['mcp','security']},['TQ-001','TQ-002']],[{tags:['mcp','security'],tag_mode:'all'},['TQ-001']],[{tags:['sec']},[]],[{query:'SECUR'},['TQ-001']],[{untagged_only:true},['TQ-004']],[{tags:['mcp'],status:'Approved',section:doc.sections[0].id},['TQ-001','TQ-002']],[{tags:[]},['TQ-001','TQ-002','TQ-003','TQ-004']]]){
       const result=await call('list_requirements',{project_id,...filters});assert.deepEqual(result.items.map(r=>r.id),expected);assert.deepEqual(doc.requirements.filter(r=>matchesRequirement(r,filters)).map(r=>r.id),expected);
     }
     await call('list_requirements',{project_id,tags:['mcp'],untagged_only:true},'VALIDATION_ERROR');

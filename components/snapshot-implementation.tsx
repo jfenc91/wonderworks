@@ -1,4 +1,5 @@
 'use client';
+import {exactRevision} from '@/lib/authored';
 import {useRef,useState} from 'react';
 import {EditConflict,useEditBase,editBlocked} from '@/components/edit-conflict';
 import {Copy,ExternalLink,Pencil} from 'lucide-react';
@@ -33,7 +34,7 @@ export function SnapshotImplementation({doc,id,mutate,busy}:{doc:Workspace;id:st
     try{await mutate('set_snapshot_implementation',pending.current.args);pending.current=null;setEditing(false);}
     catch(e){setUncertain(isUncertain(e));setError(e instanceof Error?e.message:'Unable to save implementation commit.');}
   }
-  return <section className="snapshot-implementation"><h3>Implementation commit</h3><p className="workflow-footnote">User-recorded reference. This does not mark requirements Implemented or establish passing verification.</p><CommitReference commit={commit}/>{saved.implementation_updated_at&&<p className="workflow-meta">Metadata updated <time dateTime={saved.implementation_updated_at}>{date(saved.implementation_updated_at)}</time> · Actor: {saved.implementation_actor?.id??'Unknown'}</p>}
+  return <section className="snapshot-implementation"><h3>Implementation commit</h3><p className="workflow-footnote">A user-recorded commit marks only exact matching current revisions Implemented. Other revisions and verification results are unchanged. Clearing the last supporting reference returns automatically implemented revisions to Approved.</p><CommitReference commit={commit}/>{saved.implementation_updated_at&&<p className="workflow-meta">Metadata updated <time dateTime={saved.implementation_updated_at}>{date(saved.implementation_updated_at)}</time> · Actor: {saved.implementation_actor?.id??'Unknown'}</p>}
     {!editing?<button className="secondary" disabled={busy} onClick={edit}><Pencil size={14}/>{commit?'Edit implementation commit':'Add implementation commit'}</button>:<form className="editor-form" onSubmit={e=>{e.preventDefault();void save();}}>
       <EditConflict base={editBase.base} doc={doc} latest={commit} onReconcile={()=>{editBase.setBase(doc);pending.current=null;}}/><label>Full Git commit ID<input required value={commitId} onChange={e=>setCommitId(e.target.value)} spellCheck={false}/><span className="field-hint">40 or 64 hexadecimal characters</span></label>
       <label>Repository (optional)<select value={repositoryId} onChange={e=>setRepositoryId(e.target.value)}><option value="">No repository association</option>{commit?.repository&&!doc.repositories?.some(r=>r.id===commit.repository_id)&&<option value={commit.repository_id}>{commit.repository.name} (unlinked, recorded reference)</option>}{doc.repositories?.map(r=><option value={r.id} key={r.id}>{r.name}</option>)}</select></label>
@@ -46,6 +47,7 @@ export function SnapshotImplementation({doc,id,mutate,busy}:{doc:Workspace;id:st
       <div className="editor-actions"><button className="ghost" type="button" disabled={busy} onClick={()=>{setEditing(false);setError('');pending.current=null;}}>Cancel</button>{commit&&<button className="ghost" type="button" disabled={busy||editBlocked(editBase.base,doc)} onClick={()=>void save(true)}>Clear reference</button>}<button className="primary" disabled={busy||editBlocked(editBase.base,doc)}>{busy?'Saving…':'Save commit reference'}</button></div>
       {error&&<button className="ghost" type="button" disabled={busy} onClick={async()=>{try{await mutate('reload_workspace');setError('Latest workspace loaded. Inspect it and explicitly reconcile before saving.');}catch(e){setError(e instanceof Error?e.message:'Unable to reload.');}}}>Reload latest; keep input</button>}
     </form>}
+    <details className="snapshot-current-lifecycle"><summary>Current lifecycle compared with this frozen snapshot</summary><p>Frozen item statuses are saved snapshot values. The current states below come from workspace revision {doc.version}.</p>{doc.baselines.find(b=>b.id===id)?.requirements.filter(r=>r.kind!=='information').map(r=>{const current=doc.requirements.find(v=>v.id===r.id);return <p key={r.id}>{r.id} · Frozen r{r.revision}: {r.status} · {current?`Current r${current.revision}: ${current.status} · ${exactRevision(r,current)?'Exact authored match':'Different revision or authored content; this snapshot cannot implement the current revision'}`:'Absent from current requirements'}</p>;})}</details>
     <CorrectionHistory key={doc.id+id} doc={doc} id={id}/>
   </section>;
 }

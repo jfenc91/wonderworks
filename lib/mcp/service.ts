@@ -1,3 +1,4 @@
+import {validateStatusEcho,pendingRequirements,proposalLifecycle,lifecycleState,matchingSupports} from '../lifecycle';
 import {inheritRich,initializeSourceReviews} from '../item-content';
 import {projectGuidance} from '../agent-guidance';
 import {ZodError} from 'zod';
@@ -5,7 +6,7 @@ import {normalizeTags,withTags,matchesRequirement} from '../tags';
 import type {Workspace,ChangeProposal} from '../types';
 import {nextId,record,requirementInput} from '../requirements';
 import {recordEvidence} from '../evidence';
-import {canonical,createProposal,updateProposal,getProposal,editProposalRequirement,deleteProposalRequirement,restoreProposalRequirement,submitProposal,rebaseProposal,validateSet,isStale,requirementChanges,proposalConflicts,setVersion} from '../workflow';
+import {canonical,sameRequirement,createProposal,updateProposal,getProposal,editProposalRequirement,deleteProposalRequirement,restoreProposalRequirement,submitProposal,rebaseProposal,validateSet,isStale,requirementChanges,proposalConflicts,setVersion} from '../workflow';
 import {toolMap} from './contracts';
 import {ToolError} from './errors';
 import type {McpStore} from '../../db/mcp-store';
@@ -17,7 +18,7 @@ export type Store=Pick<McpStore,'list'|'read'|'replay'|'commit'>;
 export async function digest(value:unknown){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical(value))))).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const versions=(doc:Workspace)=>({project_id:doc.id,workspace_version:doc.version,requirements_version:setVersion(doc)});
 function summary(doc:Workspace,p:ChangeProposal){const {baseRequirements,baseSections,requirements,...metadata}=p;return {...metadata,first_included:firstInclusion(doc,p),stale:isStale(doc,p),change_count:requirementChanges(baseRequirements,requirements).length};}
-function inspect(doc:Workspace,p:ChangeProposal){return {...summary(doc,p),baseRequirements:p.baseRequirements,baseSections:p.baseSections,requirements:p.requirements,changes:requirementChanges(p.baseRequirements,p.requirements),conflicts:proposalConflicts(doc,p).map(id=>({id,base:p.baseRequirements.find(r=>r.id===id)??null,proposed:p.requirements.find(r=>r.id===id)??null,latest:doc.requirements.find(r=>r.id===id)??null}))};}
+function inspect(doc:Workspace,p:ChangeProposal){return {...summary(doc,p),baseRequirements:p.baseRequirements,baseSections:p.baseSections,requirements:pendingRequirements(doc,p),lifecycle:proposalLifecycle(doc,p),changes:requirementChanges(p.baseRequirements,p.requirements),conflicts:proposalConflicts(doc,p).map(id=>({id,base:p.baseRequirements.find(r=>r.id===id)??null,proposed:p.requirements.find(r=>r.id===id)??null,latest:doc.requirements.find(r=>r.id===id)??null}))};}
 function found<T>(value:T|undefined,type:string):T{if(!value)throw new ToolError('NOT_FOUND',`${type} not found in this project.`);return value;}
 
 async function paginate<T>(items:T[],args:Record<string,unknown>,scope:unknown,revision:unknown){
@@ -49,6 +50,7 @@ export function stage(doc:Workspace,proposalId:string,operations:any[]){
     if(op.op==='add'){
       const data=requirementInput.parse({...op.requirement,links:links(op.requirement.links)});
       if(!doc.sections.some(s=>s.id===data.section))throw new ToolError('VALIDATION_ERROR','Choose an existing section.',{section:data.section});
+      validateStatusEcho(doc,p,op.requirement);
       p.requirements.push({...inheritRich(data),tags:data.tags??[],id:refs[op.client_ref],revision:1});
     }else if(op.op==='edit')editProposalRequirement(doc,p.id,{...op.requirement,id:op.requirement_id,links:links(op.requirement.links)});
     else if(op.op==='delete')deleteProposalRequirement(doc,p.id,op.requirement_id);
@@ -76,7 +78,7 @@ async function callToolCore(store:Store,name:string,raw:unknown,actor:Actor,corr
     const v=versions(doc);
     switch(name){
       case 'get_project':return {...v,id:doc.id,name:doc.name,prefix:doc.prefix,sections:doc.sections,repositories:doc.repositories??[]};
-      case 'get_requirement':return {...v,requirement:withTags(found(doc.requirements.find(r=>r.id===args.requirement_id),'Requirement')),lifecycle:requirementHistory(doc,args.requirement_id).lifecycle,coverage:requirementHistory(doc,args.requirement_id).coverage};
+      case 'get_requirement':return {...v,requirement:withTags(found(doc.requirements.find(r=>r.id===args.requirement_id),'Requirement')),lifecycle:requirementHistory(doc,args.requirement_id).lifecycle,lifecycle_state:lifecycleState(doc,found(doc.requirements.find(r=>r.id===args.requirement_id),'Requirement')),coverage:requirementHistory(doc,args.requirement_id).coverage};
       case 'get_requirement_history':return requirementHistoryPage(doc,args.requirement_id,args);
       case 'get_snapshot':return {...v,snapshot:requireSnapshot(doc,args.baseline_id),associations:snapshotAssociations(doc,args.baseline_id)};
       case 'get_snapshot_implementation_history':{
@@ -86,7 +88,7 @@ async function callToolCore(store:Store,name:string,raw:unknown,actor:Actor,corr
       case 'get_proposal':return {...v,proposal:inspect(doc,found(doc.proposals?.find(p=>p.id===args.proposal_id),'Proposal'))};
       default:{
         let items:unknown[]=[];
-        if(name==='list_requirements')items=doc.requirements.filter(r=>matchesRequirement(r,args)).map(withTags);
+        if(name==='list_requirements')items=doc.requirements.filter(r=>matchesRequirement(r,args)).map(r=>({...withTags(r),lifecycle_state:lifecycleState(doc,r)}));
         if(name==='list_snapshots')items=doc.baselines.map(({requirements,sections,repositories,...meta})=>({...meta,...implementationMetadata(doc,meta.id)}));
         if(name==='list_proposals')items=(doc.proposals??[]).map(p=>summary(doc,p));
         if(name==='list_evidence')items=doc.evidence.filter(e=>!args.baseline_id||e.baseline===args.baseline_id);
@@ -108,7 +110,7 @@ async function callToolCore(store:Store,name:string,raw:unknown,actor:Actor,corr
     switch(name){
       case 'set_snapshot_implementation':{
         unchanged=!setSnapshotImplementation(doc,args.baseline_id,args.implementation_commit,{id:actor.id,...(actor.clientName?{reportedClientName:actor.clientName}:{})},new Date(now).toISOString());
-        Object.assign(result,{baseline_id:args.baseline_id,...implementationMetadata(doc,args.baseline_id),workspace_version:doc.version+(unchanged?0:1)});
+        Object.assign(result,{baseline_id:args.baseline_id,...implementationMetadata(doc,args.baseline_id),affected_requirements:doc.requirements.filter(r=>r.kind!=='information'&&requireSnapshot(doc,args.baseline_id).requirements.some(v=>v.kind!=='information'&&v.id===r.id&&v.revision===r.revision&&sameRequirement(v,r))).map(r=>({requirement_id:r.id,revision:r.revision,status:r.status,supports:matchingSupports(doc,r)})),workspace_version:doc.version+(unchanged?0:1)});
         objectIds=[args.baseline_id];break;
       }
       case 'create_proposal':{const p=createProposal(doc,args);result.proposal_id=p.id;result.status=p.status;objectIds=[p.id];break;}
@@ -145,7 +147,7 @@ async function callToolCore(store:Store,name:string,raw:unknown,actor:Actor,corr
     doc.history[0].date=doc.snapshotImplementations![args.baseline_id].updated_at;
     doc.history[0].message=`Implementation commit ${args.implementation_commit?'recorded':'cleared'} · ${args.baseline_id}`;
   }
-  captureRequirementHistory(original,doc,{source:name,actor:{id:actor.id,...(actor.clientName?{reportedClientName:actor.clientName}:{})}});
+  captureRequirementHistory(original,doc,{source:name,date:new Date(now).toISOString(),actor:{id:actor.id,...(actor.clientName?{reportedClientName:actor.clientName}:{})}});
   }
   definition.coreOutput.parse(result);
   return store.commit(doc,args.expected_workspace_version,{key,project:doc.id,fingerprint,result,expiresAt:now+24*60*60*1000},now,unchanged);

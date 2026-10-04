@@ -5,24 +5,17 @@ import {tagsOf,withTags} from './tags';
 import type {Workspace, Requirement, ChangeProposal, Repository} from './types';
 import {nextId, record, requirementInput, validateDependencies} from './requirements';
 
-export const requirementFields = ['section','title','description','criteria','priority','status','parameters','links','tags','kind','body_format','diagrams','summarizes','diagram_mappings'] as const;
-export function canonical(value:unknown):string {
-  if (Array.isArray(value)) return '['+value.map(canonical).join(',')+']';
-  if (value && typeof value==='object') return '{'+Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>JSON.stringify(k)+':'+canonical(v)).join(',')+'}';
-  return JSON.stringify(value) ?? 'undefined';
-}
-export function sameRequirement(a?:Requirement,b?:Requirement) {
-  if (!a || !b) return a===b;
-  return requirementFields.every(field=>canonical(field==='tags'?tagsOf(a):a[field])===canonical(field==='tags'?tagsOf(b):b[field]));
-}
+import {authored,authoredFields,requirementFields,canonical,sameRequirement} from './authored';
+import {validateStatusEcho,acceptRevisions,pendingRequirements} from './lifecycle';
+export {authoredFields,requirementFields,canonical,sameRequirement} from './authored';
 export function setVersion(doc:Workspace) { return doc.requirementsVersion ?? 1; }
-export function setContent(doc:Pick<Workspace,'requirements'|'sections'>) { return canonical({requirements:doc.requirements.map(withTags),sections:doc.sections}); }
+export function setContent(doc:Pick<Workspace,'requirements'|'sections'>) { return canonical({requirements:doc.requirements.map(r=>({id:r.id,revision:r.revision,...authored(r)})),sections:doc.sections}); }
 export function requirementChanges(before:Requirement[],after:Requirement[]) {
   const ids=[...new Set([...before.map(r=>r.id),...after.map(r=>r.id)])];
   return ids.flatMap(id=>{
     const old=before.find(r=>r.id===id),next=after.find(r=>r.id===id);
-    if (sameRequirement(old,next)) return [];
-    return [{id,before:old,after:next,kind:!old?'Added':!next?'Deleted':'Edited',fields:requirementFields.filter(f=>canonical(f==='tags'&&old?tagsOf(old):old?.[f])!==canonical(f==='tags'&&next?tagsOf(next):next?.[f]))}];
+    if (sameRequirement(old,next)&&!(next?.kind==='information'&&old?.status!==next.status)) return [];
+    return [{id,before:old,after:next,kind:!old?'Added':!next?'Deleted':'Edited',fields:(next?.kind==='information'?requirementFields:authoredFields).filter(f=>canonical(f==='tags'&&old?tagsOf(old):old?.[f])!==canonical(f==='tags'&&next?tagsOf(next):next?.[f]))}];
   });
 }
 export function isStale(doc:Workspace,p:ChangeProposal) {
@@ -73,10 +66,12 @@ export function editProposalRequirement(doc:Workspace,id:unknown,input:unknown) 
   if(!doc.sections.some(s=>s.id===data.section))throw Error('Choose an existing section');
   const existing=p.requirements.find(r=>r.id===data.id);
   if(data.id&&!existing)throw Error('Requirement is not in this proposal');
-  data=inheritRich(data,existing);validateItem(data);
+  validateStatusEcho(doc,p,input as Partial<Requirement>,existing);
+  data=inheritRich(data,existing);data.status=(input as Partial<Requirement>).status??existing?.status??'Draft';validateItem(data);
   const requirementId=existing?.id??nextId(doc);
   const candidate=revised({...data,tags:data.tags??tagsOf(existing??{}),id:requirementId,revision:existing?.revision??1},p.baseRequirements.find(r=>r.id===requirementId));
-  if(existing&&sameRequirement(existing,candidate))return;
+  if(candidate.kind!=='information'){const base=p.baseRequirements.find(r=>r.id===candidate.id);candidate.status=base&&sameRequirement(base,candidate)?(doc.requirements.find(r=>r.id===candidate.id)?.status??base.status):'Draft';}
+  if(existing&&sameRequirement(existing,candidate)&&existing.status===candidate.status)return;
   if(existing)p.requirements[p.requirements.indexOf(existing)]=candidate;else p.requirements.push(candidate);
   p.updatedAt=new Date().toISOString();record(doc,`${p.id} staged ${requirementId} · ${candidate.title}`,[requirementId]);
 }
@@ -127,7 +122,7 @@ export function rebaseProposal(doc:Workspace,id:unknown,input:unknown) {
   });
   validateSet(doc,requirements);
   p.requirements=requirements;p.baseRequirements=structuredClone(doc.requirements).map(withTags);p.baseSections=structuredClone(doc.sections);
-  p.baseVersion=setVersion(doc);p.status='Draft';p.updatedAt=new Date().toISOString();
+  p.requirements=pendingRequirements(doc,p);p.baseVersion=setVersion(doc);p.status='Draft';p.updatedAt=new Date().toISOString();
   record(doc,`${p.id} refreshed onto requirement set v${p.baseVersion}; review required`);
 }
 export function snapshot(doc:Workspace,name:unknown) {
@@ -144,9 +139,12 @@ export function reviewProposal(doc:Workspace,id:unknown,input:unknown) {
     if(isStale(doc,p))throw Error('Requirements changed during review. Refresh the proposal and review it again before applying');
     if(!requirementChanges(doc.requirements,p.requirements).length)throw Error('This proposal has no changes to apply');
     validateSet(doc,p.requirements);validateReviewMarkers(p.requirements,p.baseRequirements);validateDiagrams(p.requirements);
-    doc.requirements=structuredClone(p.requirements).map(r=>revised(r,doc.requirements.find(old=>old.id===r.id)));
-    doc.requirementsVersion=setVersion(doc)+1;p.status='Applied';p.appliedVersion=setVersion(doc);
+    const previous=doc.requirements;
+    const authoredChange=requirementChanges(previous,p.requirements).some(c=>!sameRequirement(c.before,c.after));
+    doc.requirements=structuredClone(p.requirements).map(r=>{const old=previous.find(v=>v.id===r.id);const next=revised(r,old);if(r.kind!=='information')next.status=old&&sameRequirement(old,r)?old.status:'Approved';return next;});
+    if(authoredChange)doc.requirementsVersion=setVersion(doc)+1;p.status='Applied';p.appliedVersion=setVersion(doc);
     p.appliedSnapshot=snapshot(doc,`${p.id} · ${p.title}`).id;
+    acceptRevisions(doc,p,previous);
   }else p.status=decision.decision==='reject'?'Rejected':'Draft';
   p.reviewNote=decision.note;p.updatedAt=new Date().toISOString();
   record(doc,`${p.id} ${decision.decision==='request_changes'?'changes requested':p.status.toLowerCase()}${decision.note?' · '+decision.note:''}`);

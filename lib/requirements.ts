@@ -26,6 +26,7 @@ export function reconcileWorkspace(current:Workspace,input:unknown){
     if(r?.tags!==undefined)try{normalizeTags(r.tags);}catch(error){throw Error(String(r.id??'Requirement')+': '+(error as Error).message);}
   }
   const imported=workspaceImport.parse(input);
+  for(const r of imported.requirements){const old=current.requirements.find(v=>v.id===r.id);if(normative(r)&&old&&old.status!==r.status)throw Error(r.id+': Status is system-maintained. Import must echo the current status; Apply approves authored revisions and matching snapshot commits implement them.');}
   if(imported.id!==current.id||imported.prefix!==current.prefix)throw Error('Import must target the same project');
   for(const b of current.baselines){
     const next=imported.baselines.find(n=>n.id===b.id);

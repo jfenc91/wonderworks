@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "proposal_id": "CP-009",
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "baseline_id": "BL-010",
+  "requirements_version": 10,
+  "verified_at": "2026-10-04T20:00:26.560Z",
+  "requirements": [
+    {
+      "id": "WW-005",
+      "revision": 4
+    },
+    {
+      "id": "WW-006",
+      "revision": 2
+    },
+    {
+      "id": "WW-009",
+      "revision": 5
+    },
+    {
+      "id": "WW-014",
+      "revision": 3
+    },
+    {
+      "id": "WW-017",
+      "revision": 2
+    },
+    {
+      "id": "WW-019",
+      "revision": 2
+    },
+    {
+      "id": "WW-037",
+      "revision": 6
+    },
+    {
+      "id": "WW-038",
+      "revision": 4
+    },
+    {
+      "id": "WW-039",
+      "revision": 2
+    },
+    {
+      "id": "WW-052",
+      "revision": 2
+    },
+    {
+      "id": "WW-053",
+      "revision": 2
+    },
+    {
+      "id": "WW-057",
+      "revision": 2
+    },
+    {
+      "id": "WW-059",
+      "revision": 2
+    },
+    {
+      "id": "WW-060",
+      "revision": 2
+    },
+    {
+      "id": "WW-061",
+      "revision": 2
+    },
+    {
+      "id": "WW-066",
+      "revision": 2
+    },
+    {
+      "id": "WW-075",
+      "revision": 2
+    },
+    {
+      "id": "WW-089",
+      "revision": 1
+    },
+    {
+      "id": "WW-090",
+      "revision": 1
+    },
+    {
+      "id": "WW-091",
+      "revision": 1
+    },
+    {
+      "id": "WW-092",
+      "revision": 1
+    },
+    {
+      "id": "WW-093",
+      "revision": 1
+    }
+  ],
+  "summary": "BL-010 automatic lifecycle: 139 automated checks and 42 combined browser checks passed, plus five checks against the built Worker. TypeScript and Worker build passed.",
+  "automated": {
+    "command": "node --import tsx --test test/*.test.mjs",
+    "passed": 139,
+    "failed": 0,
+    "skipped": 0
+  },
+  "browser": {
+    "commands": [
+      "WONDERWORKS_SECOND_URL=http://127.0.0.1:5180 node --test test/lifecycle.browser.mjs test/rich-content.browser.mjs test/proposal-authoring.browser.mjs test/agent-guidance.browser.mjs test/workspace-sync.browser.mjs",
+      "WONDERWORKS_TEST_URL=http://127.0.0.1:5180 WONDERWORKS_MCP_URL=http://127.0.0.1:5173 node --test test/lifecycle.browser.mjs"
+    ],
+    "passed": 47,
+    "unique_checks": 42,
+    "failed": 0,
+    "skipped": 0,
+    "separate_mcp_client": true,
+    "separate_worker_process": true,
+    "visible_update_ms": [
+      1292,
+      2,
+      1352,
+      1299,
+      184,
+      327,
+      834,
+      38,
+      1794,
+      1296
+    ]
+  },
+  "limitations": [
+    "Checks use disposable loopback projects and locally emulated authenticated identity; hosted OAuth expiry/revocation is not certified by these checks.",
+    "A saved hash is a user assertion of implementation, not remote Git inspection or passing verification. Deliberately failed evidence remained failed in the test workflow.",
+    "Unknown legacy status/provenance is preserved and flagged. Reconciliation is an explicit, version-guarded project write; ordinary reads never migrate data.",
+    "The five built-Worker checks repeat lifecycle scenarios against the packaged application, with an independent authenticated MCP client served by the development Worker sharing the local D1 database."
+  ],
+  "checks": [
+    {
+      "id": "WW-005",
+      "title": "Author requirements with measurable acceptance criteria",
+      "passed": true,
+      "detail": "Browser/editor and shared API tests verify read-only normative status, Draft additions, pending labels, exact rich source and proposal-only persistence."
+    },
+    {
+      "id": "WW-006",
+      "title": "Edit priority and display automatic requirement status",
+      "passed": true,
+      "detail": "Domain and browser tests verify automatic approval, revision-specific implementation, retained current status for unchanged items, rejected overrides, and independent verification failures."
+    },
+    {
+      "id": "WW-009",
+      "title": "Track meaningful requirement revisions",
+      "passed": true,
+      "detail": "Authored comparison excludes status; tests preserve item/set revisions during commit writes, corrections, clears and reconciliation, while every authored-field change creates the next revision."
+    },
+    {
+      "id": "WW-014",
+      "title": "Summarize project size and readiness",
+      "passed": true,
+      "detail": "Two-browser tests show coherent status, separate Information counts and 100% readiness for accepted requirements. Edited pending revisions are labeled and counted as pending."
+    },
+    {
+      "id": "WW-017",
+      "title": "Keep verification specific to the traced revision",
+      "passed": true,
+      "detail": "A deliberately failed baseline check remains failed through implementation and clearing; newer unmatched revisions remain Not verified."
+    },
+    {
+      "id": "WW-019",
+      "title": "Identify requirement changes since the latest baseline",
+      "passed": true,
+      "detail": "Commit-driven metadata preserves authored content and revisions, frozen snapshots and requirement-set version; proposal staleness and authored diffs remain unchanged."
+    },
+    {
+      "id": "WW-037",
+      "title": "Read current requirements and frozen implementation context through MCP",
+      "passed": true,
+      "detail": "MCP reads expose current lifecycle provenance and all supports, pending outcomes, and exact original frozen statuses. Read-only tests prove no persistence."
+    },
+    {
+      "id": "WW-038",
+      "title": "Draft requirement changesets through MCP",
+      "passed": true,
+      "detail": "Shared staging validation accepts omitted/unchanged statuses, rejects overrides and non-Draft additions, and keeps authored diffs free of copied lifecycle changes."
+    },
+    {
+      "id": "WW-039",
+      "title": "Submit and refresh MCP changesets for human review",
+      "passed": true,
+      "detail": "Reviewed Apply atomically advances the authored set once, approves changed normative revisions, preserves unchanged implementation and creates an agreeing frozen snapshot."
+    },
+    {
+      "id": "WW-052",
+      "title": "Persist a durable history for each requirement",
+      "passed": true,
+      "detail": "Tests verify durable acceptance for every revision, same-revision lifecycle events, actor/trigger/snapshot/full-commit references, append-only history and atomic D1 persistence."
+    },
+    {
+      "id": "WW-053",
+      "title": "Show requirement creation, acceptance, and lifecycle dates",
+      "passed": true,
+      "detail": "History tests preserve creation and earlier milestones; Approved-to-Approved revised acceptance is recorded; last-support loss records its reason. Recovered unknown dates remain unknown."
+    },
+    {
+      "id": "WW-057",
+      "title": "Verify requirement history and lifecycle behavior",
+      "passed": true,
+      "detail": "Executed history/API/domain/D1/browser suites cover exact before/after records, deletion, legacy gaps, pagination, retries, rollback, restart and project isolation."
+    },
+    {
+      "id": "WW-059",
+      "title": "Link an implementation commit ID to a requirement snapshot",
+      "passed": true,
+      "detail": "Existing commit validation, whole-reference replacement, normalization/no-op, repository preservation and correction history pass alongside the new exact-revision status policy."
+    },
+    {
+      "id": "WW-060",
+      "title": "Expose and verify proposal-to-snapshot and commit-to-snapshot links",
+      "passed": true,
+      "detail": "Application API and MCP agree on commit metadata, affected requirements, all supports, statuses and versions. Inclusion links, frozen exports and verification remain unchanged."
+    },
+    {
+      "id": "WW-061",
+      "title": "Keep accepted content unchanged until proposal application",
+      "passed": true,
+      "detail": "Accepted authored requirements remain untouched during proposal staging and lifecycle metadata updates; only reviewed Apply promotes authored changes."
+    },
+    {
+      "id": "WW-066",
+      "title": "Verify proposal-based editing and accepted-view isolation",
+      "passed": true,
+      "detail": "All prior authoring and CP-006 browser checks pass with the new lifecycle, preserving guarded dirty edits, explicit review, retries, contexts, navigation and cross-Worker synchronization."
+    },
+    {
+      "id": "WW-075",
+      "title": "Remind agents to record the implementation commit on the target snapshot",
+      "passed": true,
+      "detail": "Guidance now requests snapshot reference readback plus affected-current-revision checks, and separates implementation from passing tests. The temporary real Git multi-commit workflow passes."
+    },
+    {
+      "id": "WW-089",
+      "title": "Approve requirements when a proposal is accepted",
+      "passed": true,
+      "detail": "Mixed Apply tests include additions, changed Implemented and Approved revisions, unchanged Implemented requirements, deletion and Information. No-op/restore preserve implementation."
+    },
+    {
+      "id": "WW-090",
+      "title": "Mark matching current revisions Implemented when a snapshot receives a commit",
+      "passed": true,
+      "detail": "Any exact matching committed snapshot qualifies. Mixed revisions, old snapshots, carried-forward items, multiple supports, replacement, normalized no-op and final clear all pass."
+    },
+    {
+      "id": "WW-091",
+      "title": "Save lifecycle transitions without changing content revisions",
+      "passed": true,
+      "detail": "Real D1 tests inject failure after receipt insertion and race competing writes: reference, statuses, provenance, events, Activity and receipt persist together or not at all; restart replay is stable."
+    },
+    {
+      "id": "WW-092",
+      "title": "Reconcile existing statuses from saved acceptance and commit records",
+      "passed": true,
+      "detail": "Explicit reconciliation recovers only changed exact accepted revisions and matching commits, preserves unknown/manual legacy assertions, distinguishes historical/reconciliation times, and is repeat-safe across restart."
+    },
+    {
+      "id": "WW-093",
+      "title": "Verify automatic approval and revision-specific implementation",
+      "passed": true,
+      "detail": "Repeatable domain/API/MCP/D1 and independent-browser checks exercise the full automatic lifecycle and preserve failed verification. Only executed results are included."
+    }
+  ]
+}

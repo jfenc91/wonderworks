@@ -30,7 +30,7 @@ test('reminders retain exact context, review boundaries, style strength and disa
  r=projectGuidance(doc,'submit_proposal',{proposal_id:p.id},{});assert.match(r.workflow_guidance.reminder,/awaits human Apply/);assert.match(r.workflow_guidance.reminder,/no implementation snapshot/);
  apply(doc);const baseline=doc.proposals[0].appliedSnapshot;
  r=projectGuidance(doc,'get_proposal',{proposal_id:p.id},{proposal:doc.proposals[0]});assert.equal(r.workflow_guidance.context.baseline_id,baseline);assert.match(r.workflow_guidance.reminder,/first-included/);assert.match(r.workflow_guidance.reminder,/40\/64/);
- r=projectGuidance(doc,'get_snapshot',{baseline_id:'BL-001'},{});assert.equal(r.workflow_guidance.context.baseline_id,'BL-001');assert.match(r.workflow_guidance.reminder,/get_snapshot to verify/);
+ r=projectGuidance(doc,'get_snapshot',{baseline_id:'BL-001'},{});assert.equal(r.workflow_guidance.context.baseline_id,'BL-001');assert.match(r.workflow_guidance.reminder,/Verify get_snapshot/);
  doc.agentGuidance={revision:1,overrides:{writing_strength_percent:0,record_snapshot_commit:false}};
  r=projectGuidance(doc,'stage_proposal_changes',{proposal_id:p.id},{});assert.doesNotMatch(r.workflow_guidance.reminder,/STE|short active/);
  r=projectGuidance(doc,'get_snapshot',{baseline_id:'BL-001'},{});assert.doesNotMatch(r.workflow_guidance.reminder,/set_snapshot_implementation|Git SHA/);

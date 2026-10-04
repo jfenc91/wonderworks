@@ -1,6 +1,8 @@
 import type {Workspace,Requirement,RequirementEvent,HistoryActor} from './types';
 import {canonical,requirementFields,sameRequirement,setVersion} from './workflow';
 import {tagsOf} from './tags';
+import {currentRecord} from './lifecycle';
+import {normative} from './item-content';
 import {ToolError} from './mcp/errors';
 
 export type HistoryContext={source:string;actor:HistoryActor;date?:string};
@@ -29,9 +31,18 @@ export function captureRequirementHistory(before:Workspace,doc:Workspace,context
   const applied=(doc.proposals??[]).find(p=>p.status==='Applied'&&before.proposals?.find(old=>old.id===p.id)?.status!=='Applied');
   for(const id of new Set([...before.requirements,...doc.requirements].map(r=>r.id))){
     const old=before.requirements.find(r=>r.id===id)??null,next=doc.requirements.find(r=>r.id===id)??null;
-    if(sameRequirement(old??undefined,next??undefined)&&old?.revision===next?.revision)continue;
+    const authoredChanged=!sameRequirement(old??undefined,next??undefined)||old?.revision!==next?.revision;
+    const oldLife=old?currentRecord(before,old):undefined,nextLife=next?currentRecord(doc,next):undefined;
+    const metadataChanged=canonical(oldLife)!==canonical(nextLife);
+    if(!authoredChanged&&old?.status===next?.status&&!metadataChanged)continue;
+    const recovered=context.source==='reconcile_lifecycle';
+    const approval=!!next&&normative(next)&&(!!applied&&authoredChanged||recovered&&!!nextLife?.acceptance&&!oldLife?.acceptance);
+    const implementation=!!next&&normative(next)&&next.status==='Implemented'&&(old?.status!=='Implemented'||recovered&&!!nextLife?.supports.length&&!oldLife?.supports.length);
+    const correction=Object.values(doc.snapshotImplementations??{}).flatMap(v=>v.history).find(v=>!Object.values(before.snapshotImplementations??{}).some(b=>b.history.some(e=>e.id===v.id)));
+    const life=approval||metadataChanged||context.source==='set_snapshot_implementation'||recovered?{approval,implementation,reason:recovered?'Reconciled from saved records':applied?(next?(normative(next)?'Accepted revision approved':'Editorial change accepted'):'Accepted deletion'):next?.status==='Approved'&&old?.status==='Implemented'?'Lost last supporting implementation reference':'Implementation support updated',supports:nextLife?.supports??[],previousSupports:oldLife?.supports??[],...(recovered?{recovered:true,approvalDate:nextLife?.acceptance?.date??null,implementationDate:nextLife?.supports.map(v=>v.recorded_at).filter((v):v is string=>!!v).sort()[0]??null}:{}),...(correction?.after?.commit_id||correction?.before?.commit_id?{commitId:correction.after?.commit_id??correction.before!.commit_id}:{})}:undefined;
     const imported=context.source==='import';
-    append(old,next,{kind:imported?'imported':!old?'created':!next?'deleted':'changed',committed:true,
+    append(old,next,{kind:imported?'imported':recovered?'reconciled':!authoredChanged?'lifecycle':!old?'created':!next?'deleted':'changed',committed:true,
+      ...(life?{lifecycle:life}:{}),...(correction?{snapshotId:correction.baseline_id}:{}),...(recovered&&nextLife?.acceptance?{proposalId:nextLife.acceptance.proposal_id,snapshotId:nextLife.acceptance.snapshot_id}:{}),
       ...(imported?{revisionGap:!old||!!next&&next.revision>old.revision+1}:{}),
       ...(applied?{proposalId:applied.id,snapshotId:applied.appliedSnapshot,reviewNote:applied.reviewNote,source:'proposal_apply'}:{})});
   }
@@ -43,7 +54,9 @@ export function captureRequirementHistory(before:Workspace,doc:Workspace,context
 }
 
 export type Milestone={state:'known'|'unknown'|'not_recorded';date:string|null;revision:number|null;eventId:string|null;proposalId?:string;snapshotId?:string;deleted?:boolean};
-function milestone(event:RequirementEvent|undefined,complete:boolean):Milestone{
+function milestone(event:RequirementEvent|undefined,complete:boolean,kind?:'approval'|'implementation'|'acceptance'):Milestone{
+  const recoveredDate=kind==='implementation'?event?.lifecycle?.implementationDate:event?.lifecycle?.approvalDate;
+  if(event?.lifecycle?.recovered)return {state:recoveredDate?'known':'unknown',date:recoveredDate??null,revision:event.after?.revision??event.before?.revision??null,eventId:event.id,...(event.proposalId?{proposalId:event.proposalId}:{}),...(event.snapshotId?{snapshotId:event.snapshotId}:{})};
   return event?{state:'known',date:event.date,revision:event.after?.revision??event.before?.revision??null,eventId:event.id,
     ...(event.proposalId?{proposalId:event.proposalId}:{}),...(event.snapshotId?{snapshotId:event.snapshotId}:{}),...(!event.after?{deleted:true}:{})}
     :{state:complete?'not_recorded':'unknown',date:null,revision:null,eventId:null};
@@ -55,19 +68,19 @@ export function requirementHistory(doc:Workspace,id:string){
   const historical=doc.baselines.flatMap(b=>b.requirements).find(r=>r.id===id)
     ??doc.proposals?.flatMap(p=>[...p.requirements,...p.baseRequirements]).find(r=>r.id===id);
   if(!current&&!record&&!historical)throw new ToolError('NOT_FOUND','Requirement history not found in this project. Check the project and requirement IDs.');
-  const complete=record?.complete??false,last=committed.at(-1),latestValue=current??last?.after??last?.before??events.at(-1)?.after??historical;
-  const statusEvents=(status:Requirement['status'])=>committed.filter(e=>e.source!=='import'&&e.after?.status===status&&e.before?.status!==status);
+  const complete=record?.complete??false,last=committed.filter(e=>e.kind!=='reconciled').at(-1),latestValue=current??last?.after??last?.before??events.at(-1)?.after??historical;
+  const statusEvents=(status:Requirement['status'])=>committed.filter(e=>e.source!=='import'&&(status==='Approved'&&e.lifecycle?.approval||status==='Implemented'&&e.lifecycle?.implementation||!e.lifecycle&&e.after?.status===status&&e.before?.status!==status));
   const approvals=statusEvents('Approved'),implementations=statusEvents('Implemented');
   const creation=events.find(e=>e.kind==='created'&&!e.proposalId||e.kind==='proposed_creation');
   // A later import gap cannot undo a first approval already recorded from birth.
   const firstImport=events.find(e=>e.source==='import');
   const firstApprovalKnown=complete||!!creation&&!!approvals[0]&&(!firstImport||approvals[0].sequence<firstImport.sequence);
-  const accepted=committed.filter(e=>e.source==='proposal_apply').at(-1);
+  const accepted=committed.filter(e=>e.source==='proposal_apply'||e.kind==='reconciled'&&e.lifecycle?.approval).at(-1);
   const presence=current?'current':last&&!last.after?'deleted':committed.length||observations.length?'absent':'pending';
   return {project_id:doc.id,requirement_id:id,title:latestValue?.title??id,current_revision:current?.revision??null,current_status:current?.status??null,presence,
     coverage:{state:complete?'complete':'partial',message:complete?'Complete recorded history.':'Earlier history is missing. Unknown dates are not inferred from snapshots or rollout time.',first_observed:observations[0]??null},
-    lifecycle:{created:milestone(creation,complete),last_changed:milestone(last,complete),last_change_accepted:milestone(accepted,complete),
-      first_approved:milestone(firstApprovalKnown?approvals[0]:undefined,complete),last_approved:milestone(approvals.at(-1),complete),last_implemented:milestone(implementations.at(-1),complete)},
+    lifecycle:{created:milestone(creation,complete),last_changed:milestone(last,complete),last_change_accepted:milestone(accepted,complete,'acceptance'),
+      first_approved:milestone(firstApprovalKnown?approvals[0]:undefined,complete,'approval'),first_known_approved:milestone(approvals[0],complete,'approval'),last_approved:milestone(approvals.at(-1),complete,'approval'),last_implemented:milestone(implementations.at(-1),complete,'implementation')},
     items:[...events].reverse().map(e=>({...e,proposalAvailable:!!e.proposalId&&!!doc.proposals?.some(p=>p.id===e.proposalId),snapshotAvailable:!!e.snapshotId&&doc.baselines.some(b=>b.id===e.snapshotId)}))};
 }
 

@@ -13,4 +13,4 @@ export function workspace(id='snapshot-test'){
   return doc;
 }
 export function apply(doc){const before=structuredClone(doc),p=doc.proposals[0];submitProposal(doc,p.id);reviewProposal(doc,p.id,{decision:'apply',note:'Accepted exact batch'});captureRequirementHistory(before,doc,{source:'proposal_review',actor:{id:'reviewer'}});return p;}
-export const frozen=doc=>JSON.stringify({requirements:doc.requirements,sections:doc.sections,baselines:doc.baselines,proposals:doc.proposals,evidence:doc.evidence,requirementHistory:doc.requirementHistory,requirementsVersion:doc.requirementsVersion});
+export const frozen=doc=>JSON.stringify({requirements:doc.requirements.map(({status,...r})=>r),sections:doc.sections,baselines:doc.baselines,proposals:doc.proposals,evidence:doc.evidence,requirementsVersion:doc.requirementsVersion});

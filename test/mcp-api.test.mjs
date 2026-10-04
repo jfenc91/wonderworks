@@ -56,7 +56,7 @@ test('MCP proposal, read, concurrency, evidence, and UI API workflow',async t=>{
   async function read(){doc=await (await fetch(origin+'/api/workspace?project='+project_id)).json();return doc;}
   const write=(extra={})=>({project_id,expected_workspace_version:doc.version,idempotency_key:crypto.randomUUID(),...extra});
   await mutate('section',{section:{title:'MCP behavior',description:'Local integration verification'}});
-  const input=(title,links=[])=>({section:doc.sections[0].id,title,description:'The system shall preserve the proposed behavior.',criteria:['An observable criterion.'],priority:'High',status:'Draft',parameters:{enabled:true},links});
+  const input=(title,links=[])=>({section:doc.sections[0].id,title,description:'The system shall preserve the proposed behavior.',criteria:['An observable criterion.'],priority:'High',parameters:{enabled:true},links});
   await accept({requirements:[input('Unrelated current requirement'),input('Edit this requirement'),input('Delete this requirement')]});
   await mutate('baseline',{name:'Original exact snapshot'});
   const original=structuredClone(doc),frozen=structuredClone(doc.baselines[0]);
@@ -97,7 +97,7 @@ test('MCP proposal, read, concurrency, evidence, and UI API workflow',async t=>{
     const second=await call('list_requirements',{project_id,limit:1,cursor:first.next_cursor});assert.notEqual(second.items[0].id,first.items[0].id);
     await call('list_requirements',{project_id,limit:1,cursor:first.next_cursor,query:'other'},'INVALID_CURSOR');
     await call('list_requirements',{project_id,cursor:btoa('null')},'INVALID_CURSOR');
-    assert.equal((await call('list_requirements',{project_id,query:'OBSERVABLE',section:doc.sections[0].id,status:'Draft'})).items.length,3);
+    assert.equal((await call('list_requirements',{project_id,query:'OBSERVABLE',section:doc.sections[0].id,status:'Approved'})).items.length,3);
     assert.deepEqual((await call('get_requirement',{project_id,requirement_id:doc.requirements[0].id})).requirement,doc.requirements[0]);
     assert.deepEqual((await call('get_snapshot',{project_id,baseline_id:frozen.id})).snapshot,frozen);
     await call('list_snapshots',{project_id});await call('list_proposals',{project_id});await call('list_evidence',{project_id});await call('get_proposal',{project_id,proposal_id:'CP-999'},'NOT_FOUND');

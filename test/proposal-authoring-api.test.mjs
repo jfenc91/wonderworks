@@ -26,7 +26,7 @@ test('every REST requirement entry point preserves the proposal boundary and rej
   await mutate('requirements',{proposal_id:id,requirements:[input('Would reserve ID'),input('Invalid last member',{links:['PA-999']})]},400);
   await mutate('requirements',{proposal_id:id,requirements:Array(101).fill(input('Too many'))},400);
   assert.deepEqual(await read(),before);
-  await mutate('requirements',{proposal_id:id,requirements:[{...doc.requirements[1],links:[]},{...doc.requirements[0],title:'Every editable field',description:'A staged replacement description.',criteria:['First result','Second result'],priority:'Critical',status:'Implemented',parameters:{limit:5},links:['PA-002'],tags:[' Staged ']}]});
+  await mutate('requirements',{proposal_id:id,requirements:[{...doc.requirements[1],links:[]},{...doc.requirements[0],title:'Every editable field',description:'A staged replacement description.',criteria:['First result','Second result'],priority:'Critical',status:'Approved',parameters:{limit:5},links:['PA-002'],tags:[' Staged ']}]});
   assert.deepEqual(doc.proposals[0].requirements[0].tags,['staged']);assert.equal(doc.proposals[0].requirements[0].revision,2);
   await mutate('proposal_restore',{id,requirementId:'PA-002'},400); // restores a cycle
   await mutate('proposal_restore',{id,requirementId:'PA-001'});await mutate('proposal_delete',{id,requirementId:'PA-001'});await mutate('proposal_restore',{id,requirementId:'PA-001'});
@@ -40,6 +40,6 @@ test('every REST requirement entry point preserves the proposal boundary and rej
   const args={project_id:doc.id,expected_workspace_version:doc.version,idempotency_key:crypto.randomUUID(),new_proposal:{title:'Atomic API destination'},operations:[{op:'add',client_ref:'new',requirement:input('New staged requirement')}]};
   doc=await request(args,200,'/api/proposal-authoring');const saved=structuredClone(doc);assert.deepEqual(await request(args,200,'/api/proposal-authoring'),saved);assert.deepEqual(await read(),saved);
   await request({...args,idempotency_key:crypto.randomUUID()},409,'/api/proposal-authoring');
-  const pid=doc.proposals[0].id;await mutate('proposal_submit',{id:pid});await mutate('requirements',{proposal_id:pid,requirements:[input('Submitted cannot edit')]},400);const before=doc.requirementsVersion;await mutate('proposal_review',{id:pid,review:{decision:'apply'}});assert.equal(doc.requirementsVersion,before+1);assert.equal(doc.requirements.at(-1).status,'Draft');assert.deepEqual(doc.baselines[0].requirements,doc.requirements);
+  const pid=doc.proposals[0].id;await mutate('proposal_submit',{id:pid});await mutate('requirements',{proposal_id:pid,requirements:[input('Submitted cannot edit')]},400);const before=doc.requirementsVersion;await mutate('proposal_review',{id:pid,review:{decision:'apply'}});assert.equal(doc.requirementsVersion,before+1);assert.equal(doc.requirements.at(-1).status,'Approved');assert.deepEqual(doc.baselines[0].requirements,doc.requirements);
  });
 });

@@ -12,7 +12,8 @@ export type Activity = {agentGuidance?:{revision:number;actor:HistoryActor};id:s
 export type HistoryActor = {id:string|null;reportedClientName?:string};
 export type RequirementEvent = {
   id:string;projectId:string;requirementId:string;sequence:number;date:string;
-  kind:'created'|'changed'|'deleted'|'proposed_creation'|'imported';
+  kind:'created'|'changed'|'deleted'|'proposed_creation'|'imported'|'lifecycle'|'reconciled';
+  lifecycle?:{approval?:boolean;implementation?:boolean;reason:string;supports:ImplementationSupport[];previousSupports:ImplementationSupport[];recovered?:boolean;approvalDate?:string|null;implementationDate?:string|null;commitId?:string};
   source:string;actor:HistoryActor;committed:boolean;
   before:Requirement|null;after:Requirement|null;fields:string[];
   beforeSetVersion:number;afterSetVersion:number;
@@ -22,4 +23,7 @@ export type RequirementRecord = {complete:boolean;events:RequirementEvent[]};
 export type ImplementationCommit = {commit_id:string;repository_id?:string;repository?:Repository;commit_url?:string};
 export type ImplementationCorrection = {id:string;project_id:string;baseline_id:string;date:string;actor:HistoryActor;before:ImplementationCommit|null;after:ImplementationCommit|null};
 export type SnapshotImplementation = {implementation_commit:ImplementationCommit|null;updated_at:string;actor:HistoryActor;history:ImplementationCorrection[]};
-export type Workspace = {agentGuidance?:{overrides:GuidanceOverrides;revision:number};id:string;prefix:string;name:string;sections:Section[];requirements:Requirement[];history:Activity[];baselines:Baseline[];evidence:Evidence[];version:number;nextSequence?:number;requirementsVersion?:number;repositories?:Repository[];proposals?:ChangeProposal[];requirementHistory?:Record<string,RequirementRecord>;snapshotImplementations?:Record<string,SnapshotImplementation>};
+export type AcceptanceRecord={proposal_id:string;snapshot_id:string;date:string|null;recovered:boolean};
+export type ImplementationSupport={baseline_id:string;commit:ImplementationCommit;recorded_at:string|null};
+export type LifecycleRecord={revision:number;acceptance?:AcceptanceRecord;managedImplementation:boolean;legacyImplementation:boolean;supports:ImplementationSupport[];reconciled?:boolean};
+export type Workspace = {requirementLifecycle?:Record<string,LifecycleRecord>;agentGuidance?:{overrides:GuidanceOverrides;revision:number};id:string;prefix:string;name:string;sections:Section[];requirements:Requirement[];history:Activity[];baselines:Baseline[];evidence:Evidence[];version:number;nextSequence?:number;requirementsVersion?:number;repositories?:Repository[];proposals?:ChangeProposal[];requirementHistory?:Record<string,RequirementRecord>;snapshotImplementations?:Record<string,SnapshotImplementation>};

@@ -9,7 +9,7 @@ import {parseMermaid,validateDot,validateDiagrams} from '../lib/diagrams.ts';
 import {matchesRequirement} from '../lib/tags.ts';
 import {toolMap} from '../lib/mcp/contracts.ts';
 const workspace=()=>({id:'rich',name:'Rich content',prefix:'RC',version:0,requirementsVersion:1,sections:[{id:'s',title:'Content',description:''}],requirements:[],baselines:[],evidence:[],history:[],proposals:[]});
-const req=(extra={})=>({section:'s',title:'Normative behavior',description:'  α😀 &amp; <tag>\n\n\tkept exactly  \n',criteria:['A measurable result.'],priority:'High',status:'Draft',parameters:{},links:[],...extra});
+const req=(extra={})=>({section:'s',title:'Normative behavior',description:'  α😀 &amp; <tag>\n\n\tkept exactly  \n',criteria:['A measurable result.'],priority:'High',parameters:{},links:[],...extra});
 const block=(extra={})=>({id:'diagram-main',language:'mermaid',source:'flowchart LR\n A[Start] -->|yes| B[Finish]',title:'Overview',alt:'Start leads to finish.',position:0,...extra});
 const info=(extra={})=>req({kind:'information',criteria:[],description:'Summary narrative',summarizes:[],diagrams:[block()],...extra});
 const accept=doc=>{submitProposal(doc,doc.proposals[0].id);reviewProposal(doc,doc.proposals[0].id,{decision:'apply'});};
@@ -65,7 +65,7 @@ test('rich diffs, source whitespace, rebase conflicts, restore and exact legacy 
 test('search, kind/status combination, export source boundaries and complete-spec MCP schema',()=>{
  const r=info({id:'RC-010',revision:2,body_format:'html',description:'<p>Hello <b>readable</b>&#32;world &amp; things</p>',summarizes:[{requirement_id:'RC-001',reviewed_revision:1}],diagrams:[block({title:'Special label'})]});
  for(const query of ['hello readable world','Special label','RC-001','Start'])assert.ok(matchesRequirement(r,{query}));assert.ok(matchesRequirement(r,{kind:'information'}));assert.ok(!matchesRequirement(r,{status:'Draft'}));
- const d=workspace();d.requirements=[{...req(),id:'RC-001',revision:2},r];const output=exportSpecification(d);for(const value of ['Information','Format: html','```html','```mermaid','Text alternative:','Needs review','reviewed 1','current 2'])assert.ok(output.includes(value),value);assert.ok(output.includes(r.description));
+ const d=workspace();d.requirements=[{...req(),status:'Draft',id:'RC-001',revision:2},r];const output=exportSpecification(d);for(const value of ['Information','Format: html','```html','```mermaid','Text alternative:','Needs review','reviewed 1','current 2'])assert.ok(output.includes(value),value);assert.ok(output.includes(r.description));
  const schema=toolMap.get('list_requirements').definition.inputSchema;assert.deepEqual(schema.properties.kind.enum,['requirement','information']);assert.match(toolMap.get('list_requirements').description,/omit kind/);assert.ok(toolMap.get('stage_proposal_changes').definition.inputSchema.properties.operations);
  const destructive=structuredClone(d);delete destructive.requirements[1].body_format;assert.throws(()=>reconcileWorkspace(d,destructive),/Draft proposal/);
 });

@@ -40,7 +40,7 @@ test('REST, browser history reader and MCP share durable provenance with atomic 
     const pending=await history(addition),proposal=doc.proposals[0].id;
     await mutate('proposal_submit',{id:proposal});await mutate('proposal_review',{id:proposal,review:{decision:'apply',note:'Confirmed history changes'}});
     const accepted=await history(id),added=await history(addition),deleted=await history('HQ-002');
-    assert.deepEqual(added.lifecycle.created,pending.lifecycle.created);assert.equal(added.lifecycle.first_approved.state,'not_recorded');assert.equal(deleted.presence,'deleted');assert.equal(accepted.items[0].snapshotId,doc.baselines[0].id);assert.equal(accepted.items[0].reviewNote,'Confirmed history changes');assert.equal(accepted.lifecycle.first_approved.revision,3);
+    assert.deepEqual(added.lifecycle.created,pending.lifecycle.created);assert.equal(added.lifecycle.first_approved.state,'known');assert.equal(deleted.presence,'deleted');assert.equal(accepted.items[0].snapshotId,doc.baselines[0].id);assert.equal(accepted.items[0].reviewNote,'Confirmed history changes');assert.equal(accepted.lifecycle.first_approved.revision,1);
     const frozen=JSON.stringify(doc.baselines),page=await history(id,{limit:'1'});assert.ok(page.next_cursor);
     const next=await history(id,{limit:'1',cursor:page.next_cursor});assert.notEqual(next.items[0].id,page.items[0].id);
     await accept({requirements:[{...doc.requirements[0],title:'Reviewed revision after acceptance'}]});

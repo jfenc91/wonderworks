@@ -10,7 +10,7 @@ async function fixture(run,init){
  const read=async()=>doc=await(await fetch(origin+'/api/workspace?project='+doc.id)).json();
  const write=async(action,data={})=>{await read();return doc=await rest({project:doc.id,version:doc.version,action,...data});};
  await write('section',{section:{title:'Content behavior',description:'Rich-content browser checks'}});
- const req=(i,extra={})=>({section:doc.sections[0].id,title:'Source '+i,description:'Source '+i+' remains normative.',criteria:['The testable outcome is observed.'],priority:'High',status:'Approved',parameters:{},links:[],...extra});
+ const req=(i,extra={})=>({section:doc.sections[0].id,title:'Source '+i,description:'Source '+i+' remains normative.',criteria:['The testable outcome is observed.'],priority:'High',parameters:{},links:[],...extra});
  doc=await acceptRequirements(doc,Array.from({length:10},(_,i)=>req(i)),rest);
  await write('proposal',{proposal:{title:'Rich-content draft'}});const destination=doc.proposals[0].id;
  const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});

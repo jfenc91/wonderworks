@@ -50,7 +50,7 @@ test('pending creation retains original time through edits, rebase, review and a
   commit(doc,'proposal_submit',d=>submitProposal(d,'CP-001'));
   const acceptedAt='2026-10-05T10:00:00.000Z';commit(doc,'proposal_review',d=>reviewProposal(d,'CP-001',{decision:'apply',note:'Reviewed together'}),acceptedAt);
   for(const id of ['HT-001','HT-002','HT-003']){
-    const history=requirementHistory(doc,id),event=history.items[0];assert.equal(event.source,'proposal_apply');assert.equal(event.date,acceptedAt);assert.equal(event.proposalId,'CP-001');assert.equal(event.snapshotId,'BL-001');assert.equal(event.reviewNote,'Reviewed together');assert.equal(history.lifecycle.last_change_accepted.date,acceptedAt);assert.equal(history.lifecycle.first_approved.state,'not_recorded');
+    const history=requirementHistory(doc,id),event=history.items[0];assert.equal(event.source,'proposal_apply');assert.equal(event.date,acceptedAt);assert.equal(event.proposalId,'CP-001');assert.equal(event.snapshotId,'BL-001');assert.equal(event.reviewNote,'Reviewed together');assert.equal(history.lifecycle.last_change_accepted.date,acceptedAt);assert.equal(history.lifecycle.first_approved.state,id==='HT-002'?'not_recorded':'known');
   }
   assert.deepEqual(requirementHistory(doc,'HT-003').lifecycle.created,created);assert.equal(requirementHistory(doc,'HT-002').presence,'deleted');
   assert.deepEqual(doc.history[0].requirementIds,['HT-001','HT-002','HT-003']);
