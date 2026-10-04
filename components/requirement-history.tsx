@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
+import {useState} from 'react';
 import {Clock} from 'lucide-react';
 import {Sheet,SheetContent,SheetTitle,SheetDescription} from '@/components/ui/sheet';
 import {requirementHistory,type Milestone,type RequirementHistoryPage} from '@/lib/requirement-history';
@@ -26,21 +26,11 @@ function Field({requirement,field}:{requirement:Requirement|null;field:string}){
   return typeof value==='object'?<pre>{JSON.stringify(value,null,2)}</pre>:<span>{String(value)}</span>;
 }
 export function RequirementHistory({doc,id,onClose,onSource}:{doc:Workspace;id:string;onClose:()=>void;onSource:(kind:'proposal'|'snapshot',id:string)=>void}){
-  const [data,setData]=useState<RequirementHistoryPage|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[restart,setRestart]=useState(false);
-  const controller=useRef<AbortController|null>(null),retryCursor=useRef<string|undefined>(undefined);
-  async function load(cursor?:string){
-    controller.current?.abort();const abort=new AbortController();controller.current=abort;
-    retryCursor.current=cursor;setLoading(true);setError('');setRestart(false);
-    try{
-      const query=new URLSearchParams({project_id:doc.id,requirement_id:id,...(cursor?{cursor}:{})});
-      const response=await fetch('/api/requirement-history?'+query,{cache:'no-store',signal:abort.signal});
-      const result=await response.json() as RequirementHistoryPage&{error?:{code:string;message:string}};
-      if(!response.ok){setRestart(result.error?.code==='RESTART_REQUIRED');throw Error(result.error?.message??'Unable to load history.');}
-      if(!abort.signal.aborted)setData(old=>cursor&&old?{...result,items:[...old.items,...result.items]}:result);
-    }catch(e){if(!abort.signal.aborted)setError(e instanceof Error?e.message:'Unable to load history.');}
-    finally{if(!abort.signal.aborted)setLoading(false);}
-  }
-  useEffect(()=>{void load();return()=>controller.current?.abort();},[doc.id,id]); // selection is keyed by the caller
+  const [shown,setShown]=useState(50);
+  // The workspace already contains durable history. Derive all open views from
+  // this same committed revision, preserving the reader and its scroll/focus.
+  const history=requirementHistory(doc,id);
+  const data={...history,items:history.items.slice(0,shown)};
   return <Sheet open onOpenChange={open=>{if(!open)onClose();}}><SheetContent className="requirement-history-reader"><SheetTitle>History · {id}</SheetTitle><SheetDescription>{doc.name} · {data?.title??'Requirement change timeline'}</SheetDescription>
     {data&&<><div className="history-identity"><strong>{data.presence==='deleted'?'Deleted requirement':data.presence==='pending'?'Uncommitted requirement':data.presence==='absent'?'Requirement absent from current set':`Current revision ${data.current_revision}`}</strong>{data.current_status&&<span className={'badge '+data.current_status.toLowerCase()}>{data.current_status}</span>}</div><Lifecycle lifecycle={data.lifecycle}/><div className="history-coverage"><strong>{data.coverage.state==='complete'?'Complete history':'Partial legacy history'}</strong><p>{data.coverage.message}</p>{data.coverage.first_observed&&<p>First observed in {data.coverage.first_observed.snapshotId} on {date(data.coverage.first_observed.date)}. This observation does not establish creation or approval.</p>}</div>
     <ol className="requirement-timeline">{data.items.map(event=><li key={event.id}><article><header><strong>{event.kind==='proposed_creation'?'Created in proposal · uncommitted':event.source==='proposal_apply'?'Change accepted':event.kind==='imported'?'Imported change':event.kind==='deleted'?'Direct deletion':event.kind==='created'?'Direct creation':'Direct change'}</strong><time dateTime={event.date}>{date(event.date)}</time></header><p className="history-meta">{event.before?`r${event.before.revision}`:'Not present'} → {event.after?`r${event.after.revision}`:'Deleted'} · Set v{event.beforeSetVersion} → v{event.afterSetVersion}</p><p className="history-meta">Actor: {event.actor.id??'Unknown'} · Source: {event.source}{event.actor.reportedClientName&&<> · Client (reported): {event.actor.reportedClientName}</>}</p>
@@ -50,7 +40,6 @@ export function RequirementHistory({doc,id,onClose,onSource}:{doc:Workspace;id:s
     {event.reviewNote&&<blockquote><strong>Review note</strong><p>{event.reviewNote}</p></blockquote>}
     <details><summary>{event.fields.length?`Show ${event.fields.length} changed ${event.fields.length===1?'field':'fields'}`:'Show revision details'}</summary>{event.fields.map(field=><section className="history-field" key={field}><h4>{labels[field]??field}</h4><div className="history-values"><div><h5>Before</h5><Field requirement={event.before} field={field}/></div><div><h5>After</h5><Field requirement={event.after} field={field}/></div></div></section>)}{!event.fields.length&&<p>Imported revision metadata changed; requirement fields are unchanged.</p>}</details></article></li>)}</ol>
     {!data.items.length&&<p className="history-note">No recorded events for this requirement. Known snapshot observations are shown above.</p>}</>}
-    {loading&&<p role="status">Loading {data?'older entries':'history'}…</p>}{error&&<div role="alert" className="error-box"><p>{error}</p><button className="secondary" onClick={()=>void load(restart?undefined:retryCursor.current)}>{restart?'Restart history':'Retry history'}</button></div>}
-    {data?.next_cursor&&!loading&&!error&&<button className="secondary" onClick={()=>void load(data.next_cursor)}>Load older entries</button>}
+    {history.items.length>shown&&<button className="secondary" onClick={()=>setShown(count=>count+50)}>Load older entries</button>}
   </SheetContent></Sheet>;
 }

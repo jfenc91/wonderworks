@@ -41,3 +41,23 @@
 .implementation-history{margin-top:18px}.implementation-history summary{cursor:pointer}.implementation-history article{padding:16px 0;border-bottom:1px solid var(--border);font-size:12px}.implementation-history article>p{margin-bottom:10px}
 .snapshot-implementation select{width:100%;min-width:0;padding:10px;background:var(--background);border:1px solid var(--border);border-radius:6px;color:inherit}
 .snapshot-implementation .editor-actions{flex-wrap:wrap}.snapshot-reader{overflow-wrap:anywhere}
+
+/* Live collaboration stays in place; no animated refresh or layout overlay. */
+.sync-state.offline,.sync-state.reconnecting,.sync-state.blocked { color:var(--color-orange-400,#f8b67d); }
+.sync-notice,.edit-conflict { border:1px solid #8a623b; background:#30261d; border-radius:8px; padding:14px; margin:12px 0; color:#f7dec4; font-size:13px; }
+.edit-conflict p { line-height:1.6; margin:8px 0; }
+.edit-conflict pre { max-height:260px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.edit-conflict summary { cursor:pointer; margin:10px 0; }
+.sync-notice .ghost { margin-left:8px; }
+@media(max-width:640px) { .topbar-right { gap:8px; } .topbar-right .sync-state { display:inline; font-size:11px; } }
+@media(prefers-reduced-motion:reduce) { .sync-state,.sync-notice,.edit-conflict { animation:none; transition:none; } }
+.project-switch { min-width:0; }
+.project-switch [data-slot=select-trigger] { min-width:0; flex:1; overflow:hidden; }
+.project-switch [data-slot=select-value] { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.topbar>div:first-child { min-width:0; overflow:hidden; }
+.topbar>div:first-child>span:not(.project-tag) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.topbar-right { flex-shrink:0; }
+.topbar-right .sync-state { white-space:nowrap; }
+.topbar-right .sync-state.offline,.topbar-right .sync-state.reconnecting,.topbar-right .sync-state.blocked { color:#f8b67d!important; }
+.sync-state.offline:before,.sync-state.reconnecting:before,.sync-state.blocked:before { background:#f8b67d; }
+@media(max-width:640px) { .topbar-right>a,.topbar-right>.avatar { display:none; } .topbar { padding:0 18px; gap:12px; } }

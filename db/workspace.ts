@@ -2,6 +2,9 @@ import {env} from 'cloudflare:workers';
 import seed from '@/data/workspace.json';
 import type {Workspace} from '@/lib/types';
 function database(){if(!env.DB)throw new Error('Workspace storage is unavailable');return env.DB;}
+// A pure indexed read: unchanged polling never parses or transfers a workspace,
+// seeds data, or depends on which Worker handled the write.
+export async function readWorkspaceVersion(id:string){return (await database().prepare('SELECT version FROM workspaces WHERE id=?').bind(id).first<{version:number}>())?.version??null;}
 export async function readWorkspace(id='asteroids'):Promise<Workspace>{const db=database();await db.prepare('INSERT OR IGNORE INTO workspaces (id,data,version) VALUES (?,?,?)').bind('asteroids',JSON.stringify(seed),seed.version).run();const row=await db.prepare('SELECT data,version FROM workspaces WHERE id=?').bind(id).first<{data:string;version:number}>();if(!row)throw new Error('Workspace not found');const d=JSON.parse(row.data);return {...d,id,prefix:d.prefix??'AST',baselines:d.baselines??[],evidence:d.evidence??[],repositories:d.repositories??[],proposals:d.proposals??[],requirementsVersion:d.requirementsVersion??1,version:row.version};}
 export async function saveWorkspace(doc:Workspace,expected:number){const result=await database().prepare('UPDATE workspaces SET data=?,version=? WHERE id=? AND version=?').bind(JSON.stringify({...doc,version:expected+1}),expected+1,doc.id,expected).run();if(result.meta.changes!==1)throw new Error('CONFLICT');return {...doc,version:expected+1};}
 export async function listWorkspaces(){await readWorkspace();const rows=await database().prepare('SELECT id,data FROM workspaces').all<{id:string;data:string}>();return rows.results.map(r=>({id:r.id,name:JSON.parse(r.data).name}));}

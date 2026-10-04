@@ -158,3 +158,29 @@ npm run build
 ```
 
 CP-004 checks are in `test/snapshot-implementation*.test.mjs`: mixed application and reverse associations, legacy/unknown provenance, later snapshots, validation, optional field replacement, repository removal, imports, isolation, pagination, no-ops, rollback, concurrency and durable retries across real D1 worker replacement. `/verification/cp-004.json` records executed outcomes against Wonderworks BL-005, including browser verification. Local verification does not claim a hosted deployment or a remote commit check.
+
+### Live workspace updates (CP-006 / Wonderworks BL-006)
+
+A visible, connected project checks for saved changes every **1.5 seconds**. The check uses the explicit project ID and durable **workspace version**, so requirement edits, proposal staging/submission/application, evidence, repository links and snapshot implementation metadata all become visible. All dependent views, including open requirement and commit-correction histories, derive from the same authoritative workspace revision. Current requirements remain separate from staged proposals; historical snapshots retain their frozen content.
+
+`GET /api/workspace?project=<id>&since=<workspace_version>` performs an indexed D1 version read. An unchanged version returns **304 with no body**; a changed version returns a complete workspace from the normal read path. Both use `Cache-Control: no-store`. Invalid versions return 400 and unknown projects return 404. The endpoint retains the existing Sites audience boundary. It uses no process-local notifications, subscription registry, schema changes or write-path hooks, and works across Workers. Polling cannot accept partial or rolled-back saves. Synchronization never advances saved versions or creates activity.
+
+One synchronization loop owns each mounted project. Refresh requests coalesce; project changes abort old reads and discard late responses. Fetch and save results pass through the same project/version gate, preventing older or duplicate responses from replacing newer state. Failed reads retain the last workspace and its last successful sync time. Requests time out after four seconds; failures retry with jittered exponential backoff capped at **30 seconds**. Offline, online, focus and visibility events trigger immediate checks. Hidden tabs skip network checks; browser suspension and throttled background timers are outside the five-second visible-tab target. Returning to the foreground reconciles every missed version. Authentication failures, access denials and sign-in redirects stop automatic polling, show **Action required**, disable saves and offer the existing sign-in flow in another tab to retain pending input. After restoring access, focus or Retry resumes authorized reads.
+
+Background updates preserve active views, filters, selections, dialogs and input. Deleted selections are explained without silently selecting another item. **Refresh workspace** is a recovery control and does not remount the workspace or imply a successful save. The quiet status indicator distinguishes Up to date, Reconnecting, Offline and Action required; incoming changes do not produce success toasts.
+
+Every editor captures its project and workspace save version when opened. This applies to requirements, sections, evidence, repository links, proposal details and staged requirements, snapshot creation, and implementation references. A newer read leaves that save base unchanged. A warning exposes the latest saved content; **I reviewed latest; keep my input** deliberately reconciles the base while preserving input for a separate explicit save. Deleted targets and incompatible proposal lifecycle/base changes remain blocked with recoverable input. Review actions and open Apply confirmations retain their reviewed base and require renewed review after intervening saves. REST 409 responses include `current_workspace_version` and reconciliation guidance; the UI refreshes after rejection without closing the editor, swapping tokens, or retrying the write automatically. Existing idempotency keys are retained for uncertain implementation-reference saves. Browser assistant writes require a fresh deliberate `read_requirements` after intervening updates.
+
+Run the normal regression suite, then the browser acceptance checks against a loopback preview:
+
+```sh
+node --import tsx --test test/*.test.mjs
+node node_modules/typescript/bin/tsc --noEmit
+# playwright may be installed separately; PLAYWRIGHT_ROOT can identify its module.
+# CHROME_PATH optionally selects an installed Chromium/Chrome executable.
+node --test test/workspace-sync.browser.mjs
+```
+
+To include the separate-Worker browser check, build the app, run a second local Wrangler process against the same `.wrangler/state` directory on another port, and supply its origin as `WONDERWORKS_SECOND_URL`. Without that variable only that check is explicitly skipped. The tests use named QA projects and reject non-loopback origins. They exercise independent browser sessions and an independently authenticated MCP client; timed updates; unchanged 304 reads; preserved input, focus, filters and edit bases; deleted targets; stale saves; proposal lifecycle changes; unseen-content review protection; pinned snapshots and live history; offline, server failure, denied-access recovery, browser suspension and project switching with delayed responses. Unit tests cover duplicate/out-of-order results, save/read races, cleanup, coalescing, hidden tabs, access cancellation and retry bounds. Existing real-D1 tests cover transactional rollback and durable retry receipts across worker replacement.
+
+Executed outcomes and exact requirement revisions are recorded at `/verification/cp-006.json`. Timing measurements describe controlled local browser tests; simulated login/access failures do not certify hosted OAuth expiration or revocation.

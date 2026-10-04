@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "proposal_id": "CP-006",
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "baseline_id": "BL-006",
+  "requirements_version": 6,
+  "verified_at": "2026-10-04T05:15:32.810Z",
+  "requirements": [
+    {
+      "id": "WW-027",
+      "revision": 3
+    },
+    {
+      "id": "WW-032",
+      "revision": 2
+    },
+    {
+      "id": "WW-067",
+      "revision": 1
+    },
+    {
+      "id": "WW-068",
+      "revision": 1
+    },
+    {
+      "id": "WW-069",
+      "revision": 1
+    },
+    {
+      "id": "WW-070",
+      "revision": 1
+    },
+    {
+      "id": "WW-071",
+      "revision": 1
+    }
+  ],
+  "summary": "CP-006 local verification: 79 automated regression checks and 15 browser checks passed, with no failures or skipped checks. TypeScript validation passed. Worker production build passed; publication status is tracked separately by Sites.",
+  "automated": {
+    "command": "node --import tsx --test test/*.test.mjs",
+    "passed": 79,
+    "failed": 0,
+    "skipped": 0
+  },
+  "browser": {
+    "command": "WONDERWORKS_SECOND_URL=http://127.0.0.1:5180 node --test test/workspace-sync.browser.mjs",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "contexts": 2,
+    "separate_mcp_client": true,
+    "separate_worker_process": true,
+    "receiving_viewports": [
+      {
+        "width": 1440,
+        "height": 1000
+      },
+      {
+        "width": 390,
+        "height": 844
+      }
+    ],
+    "visible_update_measurements_ms": [
+      793,
+      1800,
+      1296,
+      28,
+      1798,
+      1288
+    ],
+    "measurement": "Time from successful commit response/read to detecting that version in the receiving browser. Same-host loopback, healthy connectivity; automatic updates without receiver reload. Suspension/recovery and second-worker writes included.",
+    "qa_project": "75f7a4eb-ed73-460b-a9a5-39fd9dcf4a43"
+  },
+  "checks": [
+    {
+      "id": "WW-027",
+      "title": "Stale writes preserve their original edit base",
+      "passed": true,
+      "detail": "REST 409 exposes current_workspace_version; browser recovery retains typed input, fetches the latest state, and requires deliberate reconciliation. Real D1 tests retain compare-and-update and atomic receipt guarantees."
+    },
+    {
+      "id": "WW-032",
+      "title": "Quiet synchronization and recoverable save feedback",
+      "passed": true,
+      "detail": "Browser verifies current, offline, reconnecting and action-required states; failed submissions remain open. Background refresh does not show an initial loading screen or a success toast. Compact 390px viewport has no horizontal overflow."
+    },
+    {
+      "id": "WW-067",
+      "title": "Independent browser and MCP updates appear automatically",
+      "passed": true,
+      "detail": "Separate browser contexts create, edit and delete requirements; MCP creates, stages and submits proposals and records evidence. Another browser applies the proposal. Receiving views update without reloading, preserve filters/focus, and retain frozen snapshot contents."
+    },
+    {
+      "id": "WW-068",
+      "title": "Project-scoped monotonic reconciliation",
+      "passed": true,
+      "detail": "Unit and browser tests cover version gaps, duplicates, older read/save responses, coalesced refreshes, late responses after switching projects and writes from a separate Worker process. Existing real-D1 regressions cover failed durable writes and idempotent replay across worker replacement."
+    },
+    {
+      "id": "WW-069",
+      "title": "Protect pending edits, reviews and uncertain saves",
+      "passed": true,
+      "detail": "Browser checks unrelated/conflicting changes, remote deletion, proposal submission during editing, open apply confirmation invalidation, and original-key retry after a lost successful metadata response. Input survives; confirmed retries create only one correction."
+    },
+    {
+      "id": "WW-070",
+      "title": "Recover connectivity and avoid unchanged transfers",
+      "passed": true,
+      "detail": "Browser exercises offline/online, injected 503 and denied access, actual Chromium page suspension/resume and unchanged 304 responses. Unit tests cover hidden tabs, opaque sign-in redirects, access cancellation, jitter and the 30-second retry cap. Hosted OAuth expiry/revocation is not certified by these simulations."
+    },
+    {
+      "id": "WW-071",
+      "title": "Repeatable acceptance coverage against BL-006",
+      "passed": true,
+      "detail": "The committed browser, API and unit tests and existing D1 regression suite provide the recorded outcomes against the seven exact requirement revisions listed here. No requirement lifecycle statuses are changed."
+    }
+  ],
+  "verification_scope": "Implementation and local verification against Wonderworks BL-006 only. Hosted publication is independently confirmed by Sites deployment status. This report does not claim production latency or a hosted OAuth expiration/revocation exercise. Synchronization is read-only and CP-005 is not applied or edited."
+}

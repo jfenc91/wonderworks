@@ -1,4 +1,4 @@
-import {readWorkspace,saveWorkspace,listWorkspaces,createWorkspace} from '@/db/workspace';
+import {readWorkspace,readWorkspaceVersion,saveWorkspace,listWorkspaces,createWorkspace} from '@/db/workspace';
 import {upsert,record,validateDependencies,reconcileWorkspace} from '@/lib/requirements';
 import {saveRepository,createProposal,updateProposal,editProposalRequirement,deleteProposalRequirement,restoreProposalRequirement,submitProposal,rebaseProposal,reviewProposal,snapshot,setContent,setVersion} from '@/lib/workflow';
 import {z} from 'zod';
@@ -9,10 +9,18 @@ export const dynamic='force-dynamic';
 export async function GET(request:Request){
   try{
     const url=new URL(request.url);
+    if(url.searchParams.has('since')){
+      const project=url.searchParams.get('project'),since=url.searchParams.get('since')!;
+      if(!project||!/^\d+$/.test(since)||!Number.isSafeInteger(Number(since)))return Response.json({error:'An explicit project and valid workspace version are required.'},{status:400,headers:{'Cache-Control':'no-store'}});
+      const version=await readWorkspaceVersion(project);
+      if(version===null)return Response.json({error:'Project unavailable.'},{status:404,headers:{'Cache-Control':'no-store'}});
+      if(version===Number(since))return new Response(null,{status:304,headers:{'Cache-Control':'no-store'}});
+    }
     return Response.json(url.searchParams.has('index')?await listWorkspaces():await readWorkspace(url.searchParams.get('project')??'asteroids'),{headers:{'Cache-Control':'no-store'}});
   }catch(error){console.error(error);return Response.json({error:'Workspace storage is unavailable. Please try again.'},{status:503});}
 }
 export async function POST(request:Request){
+  let projectId='asteroids';
   try{
     const origin=request.headers.get('origin');
     if(origin&&new URL(origin).host!==new URL(request.url).host)return Response.json({error:'Origin rejected'},{status:403});
@@ -23,8 +31,9 @@ export async function POST(request:Request){
       const p=z.object({name:z.string().trim().min(2).max(80),prefix:z.string().regex(/^[A-Z]{2,6}$/)}).parse(input);
       return Response.json(await createWorkspace(p.name,p.prefix));
     }
-    const doc=await readWorkspace(input.project??'asteroids');
-    if(input.version!==doc.version)return Response.json({error:'This workspace changed in another session. Reload before saving.'},{status:409});
+    projectId=input.project??'asteroids';
+    const doc=await readWorkspace(projectId);
+    if(input.version!==doc.version)return Response.json({error:'Newer saved changes are available. Fetch the latest workspace and explicitly reconcile your pending edit before saving.',current_workspace_version:doc.version},{status:409});
     const original=structuredClone(doc),before=setContent(doc),previousVersion=setVersion(doc);
     switch(input.action){
       case 'import':reconcileWorkspace(doc,input.workspace);break;
@@ -66,7 +75,9 @@ export async function POST(request:Request){
     captureRequirementHistory(original,doc,{source:input.action,actor:{id:request.headers.has('oai-sites-authorization')?null:request.headers.get('oai-authenticated-user-id')}});
     return Response.json(await saveWorkspace(doc,doc.version));
   }catch(error){
-    if(error instanceof Error&&error.message==='CONFLICT')return Response.json({error:'This workspace changed in another session. Reload before saving.'},{status:409});
+    if(error instanceof Error&&error.message==='CONFLICT'){
+      return Response.json({error:'Newer saved changes are available. Fetch the latest workspace and explicitly reconcile your pending edit before saving.',current_workspace_version:await readWorkspaceVersion(projectId)},{status:409});
+    }
     if(error instanceof z.ZodError)return Response.json({error:error.issues.map(i=>i.path.join('.')+': '+i.message).join('; ')},{status:400});
     console.error(error);return Response.json({error:error instanceof Error?error.message:'Unable to save changes'},{status:400});
   }
