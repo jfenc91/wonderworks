@@ -12,7 +12,7 @@ test('real D1 rollback, durable retries, no-ops, concurrent writes and failed ap
   const dir=await mkdtemp(join(tmpdir(),'wonderworks-implementation-'));
   const start=()=>new Miniflare({modules:true,script:'export default { fetch() { return new Response("test"); } }',compatibilityDate:'2026-05-15',d1Databases:{DB:'implementation-test'},d1Persist:dir});let mf=start();
   try{
-    let db=await mf.getD1Database('DB');for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql'])for(const sql of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
+    let db=await mf.getD1Database('DB');for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql'])for(const sql of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
     const doc=workspace();await db.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,?)').bind(doc.id,JSON.stringify(doc),doc.version).run();let store=new McpStore(db);const actor={id:'authenticated-actor',clientName:'Reported test client'};
     const args={project_id:doc.id,baseline_id:'BL-001',expected_workspace_version:0,idempotency_key:'durable-commit-retry',implementation_commit:{commit_id:'a'.repeat(40),repository_id:'repo'}};
     const before=await store.read(doc.id);

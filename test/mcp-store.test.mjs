@@ -13,7 +13,7 @@ test('real D1 transactions roll back failed writes and receipts survive worker r
   let mf=start();
   try{
     let db=await mf.getD1Database('DB');
-    for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql']){
+    for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql']){
       const sql=await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8');
       for(const statement of sql.split('--> statement-breakpoint'))await db.prepare(statement).run();
     }
