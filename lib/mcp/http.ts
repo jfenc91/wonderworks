@@ -68,7 +68,7 @@ export async function handleMcp(request:Request,store:Store){
           result={content:[{type:'text',text:JSON.stringify(data)}],structuredContent:data,isError:false};
         }catch(error){
           const e=error instanceof ToolError?error:new ToolError('STORAGE_UNAVAILABLE','Workspace storage is unavailable. Retry the identical request and key after recovery.');
-          if(!(error instanceof ToolError))console.error(JSON.stringify({event:'mcp_failure',code:e.code,correlationId,tool:params.name}));
+          if(!(error instanceof ToolError))console.error(JSON.stringify({event:'mcp_failure',code:e.code,correlationId,tool:params.name,errorName:error instanceof Error?error.name:'unknown',validationPaths:error&&typeof error==='object'&&'issues' in error&&Array.isArray(error.issues)?error.issues.map(issue=>({path:issue.path,code:issue.code})):undefined}));
           const data={error:{code:e.code,message:e.message,...e.details},correlation_id:correlationId};
           result={content:[{type:'text',text:JSON.stringify(data)}],structuredContent:data,isError:true};
         }

@@ -36,6 +36,9 @@ export class McpStore {
       ]);
       if(results[2].meta.changes===1)return receipt.result;
     }catch(error){
+      // Diagnose storage limits without logging workspace content or credentials.
+      const message=String(error instanceof Error?error.message:error)+' '+String((error as {cause?:{message?:string}})?.cause?.message??'');
+      console.error(JSON.stringify({event:'workspace_commit_failure',bytes:new TextEncoder().encode(JSON.stringify(doc)).length,reason:/too big|TOOBIG/i.test(message)?'value_too_large':/too many|limit/i.test(message)?'storage_limit':/constraint|UNIQUE/i.test(message)?'constraint':/locked|busy/i.test(message)?'busy':'unclassified',code:message.match(/\b(?:SQLITE|D1)_[A-Z_]+\b/g)??[],errorName:error instanceof Error?error.name:'unknown'}));
       const replay=await this.replay(receipt.key,receipt.fingerprint,now);
       if(replay)return replay;
       throw error;
