@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "proposal_id": "CP-011",
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "baseline_id": "BL-012",
+  "requirements_version": 12,
+  "verified_at": "2026-10-04T21:44:40.492Z",
+  "requirements": [
+    {
+      "id": "WW-013",
+      "revision": 4
+    },
+    {
+      "id": "WW-063",
+      "revision": 3
+    },
+    {
+      "id": "WW-078",
+      "revision": 3
+    },
+    {
+      "id": "WW-084",
+      "revision": 3
+    },
+    {
+      "id": "WW-097",
+      "revision": 1
+    },
+    {
+      "id": "WW-098",
+      "revision": 1
+    }
+  ],
+  "summary": "Readable format-aware previews, complete compact readers, rendered proposal comparisons and direct Draft Changes editing verified through user-visible workflows and independent MCP persistence readback.",
+  "checks": [
+    {
+      "id": "WW-013",
+      "title": "Complete desktop and compact item readers",
+      "passed": true,
+      "detail": "Long-list selection opens a complete reader with rendered body, exact source, ordered criteria, parameters, links and source relationships; compact return preserves the originating item, filters, scroll and selection without writing."
+    },
+    {
+      "id": "WW-063",
+      "title": "Save and return to the editing entry point",
+      "passed": true,
+      "detail": "Requirements regression saves retain their Draft working context. Direct, detail-reader and batch edits begun in Changes return to the saved proposal/item. Live destination reconciliation and atomic retries remain guarded."
+    },
+    {
+      "id": "WW-078",
+      "title": "Format-aware, safe reading and source fidelity",
+      "passed": true,
+      "detail": "Markdown/HTML excerpts derive from sanitized semantic content; plain text retains literal markup and whitespace. Unicode word/grapheme boundaries, tables, code identifiers, comparison symbols, long content and diagram-only alternatives are covered. Shared reader/preview sanitization and diagram failure regressions pass."
+    },
+    {
+      "id": "WW-084",
+      "title": "Rendered proposal review with exact source differences",
+      "passed": true,
+      "detail": "Complete before/after bodies are visible by default for body, non-body and whitespace-only changes. Added/deleted sides, pending/Applied/Rejected contexts and each saved format/revision are tested. Exact field source differences remain separately accessible."
+    },
+    {
+      "id": "WW-097",
+      "title": "Direct Changes authoring, focus and protected recovery",
+      "passed": true,
+      "detail": "Pointer and keyboard edits of Added, Edited and Information items preserve exact source and untouched rich fields through independent MCP readback/reload. Clean cancel, dirty cancel/discard, compact/detail/batch paths, remote edit/deletion/submission, validation failure, offline retry and acknowledged-save/remote-review races pass without accepted/frozen/evidence or unrelated-proposal mutations."
+    },
+    {
+      "id": "WW-098",
+      "title": "Executed rendering and authoring release verification",
+      "passed": true,
+      "detail": "140 automated checks, 53 distinct browser checks across prior regression and final BL-012 suites, TypeScript and Worker build pass. Local browser flows use real D1 and independently authenticated MCP reads/writes. Built Worker repeat reported separately; no hosted OAuth or remote Git verification is claimed."
+    }
+  ],
+  "executed": {
+    "automated": {
+      "command": "node --import tsx --test --test-reporter=tap test/*.test.mjs",
+      "passed": 140,
+      "failed": 0,
+      "skipped": 0,
+      "log": "outputs/bl012-regression.log"
+    },
+    "combined_browser": {
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0,
+      "log": "outputs/bl012-all-browser.log",
+      "note": "Includes the initial eight-check BL-012 suite and 42 checks across rich content, authoring, lifecycle, guidance and live synchronization."
+    },
+    "final_bl012_browser": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "log": "outputs/bl012-reading-final.log",
+      "note": "Expanded ten scenarios plus parent check, rerun after final review-token and focus fixes. Supersedes the initial eight-check BL-012 run."
+    },
+    "distinct_browser_checks": 53,
+    "built_worker_browser": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "log": "outputs/bl012-built-browser.log",
+      "frontend_origin": "http://127.0.0.1:5180",
+      "mcp_origin": "http://127.0.0.1:5173",
+      "note": "Same final BL-012 suite repeated against the built Cloudflare Worker; separate authenticated MCP process shares local D1."
+    },
+    "typecheck": "passed",
+    "worker_build": "passed",
+    "visual_review": [
+      "outputs/bl012-compact-reader.png",
+      "outputs/bl012-compact-editor.png",
+      "outputs/bl012-changes.png"
+    ]
+  },
+  "limits": [
+    "Executed in isolated local QA projects with loopback sign-in emulation, not a hosted OAuth expiration/revocation certification.",
+    "Implementation commit references identify the pushed Site source; they do not prove external Git repository reachability.",
+    "Read-only previews and lifecycle metadata do not change verification outcomes."
+  ]
+}

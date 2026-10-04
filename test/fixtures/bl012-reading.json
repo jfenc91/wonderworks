@@ -1,0 +1,441 @@
+[
+  {
+    "body_format": "markdown",
+    "id": "WW-062",
+    "section": "e0320e95-eea2-48de-8dfa-15d2da2f5184",
+    "title": "Select a proposal or latest accepted requirements in the main view",
+    "description": "Wonderworks shall provide a working-context selector in the main Requirements view.\n\n### Working contexts\n\n| Context | Content and editing |\n| --- | --- |\n| Latest accepted requirements | Latest accepted set; saving requires a Draft destination |\n| Draft proposal | Complete persisted staged set; editable |\n| Proposed proposal | Complete staged set; read-only until returned to Draft |\n| Applied or Rejected proposal | Not an editable destination |\n\nDefault to Latest accepted requirements when opening a project without an active proposal. Show proposal ID, title, status, base version, and staleness.\n\nSearch, filters, counts, inspection, and dependency navigation use the selected set. Live refresh preserves the context and input; it never overlays accepted content onto a proposal or automatically rebases it. Apply the five-second visible-tab target under WW-067.",
+    "criteria": [
+      "Opening a project without an active proposal defaults to Latest accepted requirements.",
+      "The selector always includes that option and the project's open Draft and Proposed proposals identified by ID, title, and status.",
+      "Selecting a proposal displays its complete persisted staged requirement set: unchanged base requirements plus additions and edits, with staged deletions excluded from ordinary results and available in the proposal diff.",
+      "The view does not silently overlay it onto a newer accepted set.",
+      "The header, editor, and save feedback clearly identify the active proposal or Latest accepted requirements, including the proposal's base version and a stale indicator when relevant.",
+      "Proposed content is clearly pending acceptance.",
+      "Search, lifecycle and tag filters, section navigation, counts, the requirement inspector, and dependency navigation operate on the selected working set.",
+      "When the user explicitly selects a different working set, a selection absent from that set is cleared or safely replaced after protecting pending input.",
+      "Remote removal of a selection follows the live-update recovery behavior instead of silently choosing a different item.",
+      "A single selector action returns to the latest saved accepted set, including any proposals applied since the view was loaded.",
+      "Merely switching views does not apply, reject, rebase, or discard saved proposal changes.",
+      "Draft proposals are editable.",
+      "Proposed proposals can be inspected but must return to Draft through the existing request-changes flow before editing; Applied and Rejected proposals cannot be selected as editable targets.",
+      "Returning to Requirements from another view retains the current same-project working context.",
+      "An explicit project switch clears the old proposal context and starts with that project's latest accepted set, subject to the unsaved-input choices.",
+      "If an active proposal closes or becomes unavailable remotely, explain the change, preserve recoverable input, and offer an explicit safe return to accepted requirements or another eligible context; do not automatically switch context.",
+      "The context selector, Latest accepted requirements, and the selected proposal's saved working set and diff refresh automatically from coherent committed workspace versions within the existing 5-second visible-tab target.",
+      "Detect proposal-only changes even when requirements_version is unchanged; do not require reselecting the context or reloading.",
+      "Live refresh preserves the active context, filters, scroll position, keyboard focus, open dialogs, and unsaved input.",
+      "An applied proposal refreshes the accepted set and marks other affected proposals stale, but never silently overlays new accepted content onto a proposal's staged set or automatically rebases it. Frozen snapshot views retain their exact historical content."
+    ],
+    "priority": "High",
+    "status": "Implemented",
+    "parameters": {},
+    "links": [
+      "WW-061",
+      "WW-003",
+      "WW-011",
+      "WW-012",
+      "WW-013",
+      "WW-047",
+      "WW-067",
+      "WW-068",
+      "WW-069"
+    ],
+    "tags": [],
+    "revision": 2
+  },
+  {
+    "kind": "information",
+    "body_format": "markdown",
+    "diagrams": [
+      {
+        "id": "proposal-flow",
+        "language": "mermaid",
+        "source": "flowchart LR\n  accepted[Accepted authored content] -->|create proposal| draft[Draft]\n  draft -->|stage and inspect| draft\n  draft -->|valid current submission| proposed[Proposed]\n  proposed -->|request changes| draft\n  proposed -->|reject| rejected[Rejected]\n  proposed -->|reviewed Apply| saved[Accepted set and frozen snapshot]\n  stale[Stale open proposal] -->|explicit rebase and resolution| draft",
+        "title": "From staged work to accepted specification",
+        "alt": "Create a Draft from accepted content and stage edits. Submit a valid current Draft for review. A reviewer can request changes back to Draft, reject it, or apply it. Apply creates the accepted set and frozen snapshot atomically. A stale base must be explicitly rebased into Draft before resubmission.",
+        "position": 1639
+      }
+    ],
+    "summarizes": [
+      {
+        "requirement_id": "WW-005",
+        "reviewed_revision": 5
+      },
+      {
+        "requirement_id": "WW-009",
+        "reviewed_revision": 6
+      },
+      {
+        "requirement_id": "WW-010",
+        "reviewed_revision": 4
+      },
+      {
+        "requirement_id": "WW-015",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-027",
+        "reviewed_revision": 4
+      },
+      {
+        "requirement_id": "WW-028",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-038",
+        "reviewed_revision": 5
+      },
+      {
+        "requirement_id": "WW-039",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-040",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-061",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-062",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-063",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-064",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-065",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-084",
+        "reviewed_revision": 2
+      }
+    ],
+    "diagram_mappings": [
+      {
+        "block_id": "proposal-flow",
+        "part": "accepted",
+        "requirement_ids": [
+          "WW-061",
+          "WW-062"
+        ]
+      },
+      {
+        "block_id": "proposal-flow",
+        "part": "draft",
+        "requirement_ids": [
+          "WW-005",
+          "WW-038",
+          "WW-063",
+          "WW-064"
+        ]
+      },
+      {
+        "block_id": "proposal-flow",
+        "part": "proposed",
+        "requirement_ids": [
+          "WW-039",
+          "WW-065"
+        ]
+      },
+      {
+        "block_id": "proposal-flow",
+        "part": "saved",
+        "requirement_ids": [
+          "WW-009",
+          "WW-061",
+          "WW-084"
+        ]
+      },
+      {
+        "block_id": "proposal-flow",
+        "part": "stale",
+        "requirement_ids": [
+          "WW-027",
+          "WW-039",
+          "WW-040"
+        ]
+      }
+    ],
+    "section": "245c9226-da3f-40ef-893f-3b757ed248ab",
+    "title": "Guide to proposal authoring and acceptance",
+    "description": "**Information — non-normative.** This guide summarizes the linked source requirements. It adds no product obligations or acceptance checks.\n\n### Terms\n\n| Term | Meaning |\n| --- | --- |\n| Latest accepted requirements | Current accepted authored content; not a filter for Approved status |\n| Draft proposal | Editable staged set based on a specific accepted requirement-set version |\n| Proposed proposal | Submitted set awaiting review; not yet accepted |\n| Apply | Explicit reviewer action that accepts the batch and creates its frozen snapshot |\n| Workspace version | Save token for all meaningful workspace writes |\n| Requirement-set version | Version of accepted authored content |\n\n### Read the workflow\n\nCreate or select a Draft, stage the complete intended set, inspect its diff, and submit it. Only reviewed Apply accepts the changes. A stale base requires explicit rebase and renewed review; it cannot proceed directly to Apply.\n\nSave from the accepted view asks for a Draft destination. Saving in an active Draft uses that proposal. Creating a destination and staging a pending edit is atomic.\n\n### Review checklist\n\n- Inspect additions, edits, deletions, source formats, and criteria.\n- Check dependencies and summary references against the final staged set.\n- Preserve other proposals and accepted content during authoring.\n- Reconcile saved content before using a new workspace token.\n- Retry an uncertain write with the same key and identical arguments.\n- Inspect refreshed content before a review action; background refresh cannot authorize unseen changes.\n\nThe diagram's labels link to the requirements that define each step.",
+    "criteria": [],
+    "priority": "High",
+    "status": "Draft",
+    "parameters": {},
+    "links": [],
+    "tags": [],
+    "id": "WW-094",
+    "revision": 1
+  },
+  {
+    "kind": "information",
+    "body_format": "markdown",
+    "diagrams": [
+      {
+        "id": "lifecycle-flow",
+        "language": "dot",
+        "source": "digraph Lifecycle {\n  rankdir=LR;\n  draft [label=\"New proposed revision: Draft\"];\n  approved [label=\"Accepted revision: Approved\"];\n  implemented [label=\"Exact current revision: Implemented\"];\n  revised [label=\"New accepted revision: Approved\"];\n  evidence [label=\"Baseline-specific verification\"];\n  draft -> approved [label=\"reviewed Apply\"];\n  approved -> implemented [label=\"exact-match snapshot commit\"];\n  implemented -> approved [label=\"last automated support cleared\"];\n  implemented -> revised [label=\"Apply meaningful edit\"];\n  implemented -> evidence [style=dashed, label=\"separate outcome\"];\n}",
+        "title": "Current revision lifecycle",
+        "alt": "A new proposed requirement is Draft. Reviewed Apply accepts a new revision as Approved. A valid exact-match snapshot commit marks that current revision Implemented. Clearing the last automated support returns it to Approved; accepting a meaningful edit creates a new Approved revision. Verification outcomes remain separate.",
+        "position": 1920
+      }
+    ],
+    "summarizes": [
+      {
+        "requirement_id": "WW-006",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-009",
+        "reviewed_revision": 6
+      },
+      {
+        "requirement_id": "WW-014",
+        "reviewed_revision": 4
+      },
+      {
+        "requirement_id": "WW-017",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-019",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-052",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-053",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-058",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-059",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-060",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-089",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-090",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-091",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-092",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-093",
+        "reviewed_revision": 2
+      }
+    ],
+    "diagram_mappings": [
+      {
+        "block_id": "lifecycle-flow",
+        "part": "draft",
+        "requirement_ids": [
+          "WW-006",
+          "WW-089"
+        ]
+      },
+      {
+        "block_id": "lifecycle-flow",
+        "part": "approved",
+        "requirement_ids": [
+          "WW-053",
+          "WW-089"
+        ]
+      },
+      {
+        "block_id": "lifecycle-flow",
+        "part": "implemented",
+        "requirement_ids": [
+          "WW-059",
+          "WW-090",
+          "WW-091"
+        ]
+      },
+      {
+        "block_id": "lifecycle-flow",
+        "part": "revised",
+        "requirement_ids": [
+          "WW-009",
+          "WW-089"
+        ]
+      },
+      {
+        "block_id": "lifecycle-flow",
+        "part": "evidence",
+        "requirement_ids": [
+          "WW-017",
+          "WW-093"
+        ]
+      }
+    ],
+    "section": "1c6f046b-38ce-4f74-b26d-a30ebfb6794d",
+    "title": "Guide to approval, implementation, and verification",
+    "description": "**Information — non-normative.** This guide explains the linked lifecycle requirements. Source requirements remain authoritative.\n\n### Three separate facts\n\n| Fact | Established by | What it does not establish |\n| --- | --- | --- |\n| Accepted authored revision | Reviewed Apply | Product implementation or passing tests |\n| Implemented current revision | User-recorded snapshot commit with an exact match | Code inspection or successful verification |\n| Verification outcome | Submitted test or review checks for an exact frozen baseline | Approval or implementation of a different revision |\n\n### Exact implementation match\n\nMatch **project + requirement ID + revision + authored content**. Ignore lifecycle metadata in the content comparison. Search all supporting snapshots, not only the newest one.\n\n| Frozen snapshot with commit | Current accepted set | Result |\n| --- | --- | --- |\n| A r2, B r4 | A r3, B r4 | Only B r4 receives implementation support |\n| An older snapshot containing current B r4 | Current B r4 | B r4 can be Implemented |\n| One of two matching supports is cleared | Same current revision | Keep Implemented |\n| Last matching support is cleared | Revision implemented by this automation | Return to Approved; retain history |\n\n### Editing and history\n\nA meaningful authored edit creates a new revision on Apply. The new revision is Approved even when the prior revision was Implemented. An unchanged requirement keeps its latest current status.\n\nFormatting, body source, criteria, priority, tags, and links are authored fields. An editorial rewrite therefore has a lifecycle effect when applied.\n\nCommit-reference changes update workspace metadata atomically without changing authored revisions, the accepted set version, frozen exports, or evidence. Unknown legacy facts remain unknown. A proposal's first-included snapshot stays fixed even when another snapshot supports current implementation.",
+    "criteria": [],
+    "priority": "High",
+    "status": "Draft",
+    "parameters": {},
+    "links": [],
+    "tags": [],
+    "id": "WW-095",
+    "revision": 1
+  },
+  {
+    "kind": "information",
+    "body_format": "markdown",
+    "diagrams": [
+      {
+        "id": "sync-flow",
+        "language": "mermaid",
+        "source": "flowchart TD\n  writer[Browser REST or MCP write] --> commit[Committed workspace version]\n  commit --> read[Fetch authoritative active-project data]\n  read --> view[Refresh coherent surrounding views]\n  read --> protect[Retain pending input and saved edit base]\n  protect --> conflict[Remote conflict or invalid destination]\n  conflict --> inspect[Inspect and explicitly reconcile]\n  inspect --> save[Save to valid Draft with reconciled token]",
+        "title": "Committed updates and the protected edit base",
+        "alt": "A saved change from another browser, REST, or MCP advances the workspace version. The browser reconciles authoritative data without replacing newer displayed versions. Surrounding views refresh, while pending input and its original base remain protected. Conflicts require explicit inspection and reconciliation before saving.",
+        "position": 1554
+      }
+    ],
+    "summarizes": [
+      {
+        "requirement_id": "WW-027",
+        "reviewed_revision": 4
+      },
+      {
+        "requirement_id": "WW-032",
+        "reviewed_revision": 3
+      },
+      {
+        "requirement_id": "WW-062",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-063",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-064",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-065",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-067",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-068",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-069",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-070",
+        "reviewed_revision": 2
+      },
+      {
+        "requirement_id": "WW-071",
+        "reviewed_revision": 2
+      }
+    ],
+    "diagram_mappings": [
+      {
+        "block_id": "sync-flow",
+        "part": "commit",
+        "requirement_ids": [
+          "WW-027",
+          "WW-068"
+        ]
+      },
+      {
+        "block_id": "sync-flow",
+        "part": "read",
+        "requirement_ids": [
+          "WW-068",
+          "WW-070"
+        ]
+      },
+      {
+        "block_id": "sync-flow",
+        "part": "view",
+        "requirement_ids": [
+          "WW-032",
+          "WW-062",
+          "WW-067"
+        ]
+      },
+      {
+        "block_id": "sync-flow",
+        "part": "protect",
+        "requirement_ids": [
+          "WW-064",
+          "WW-069"
+        ]
+      },
+      {
+        "block_id": "sync-flow",
+        "part": "conflict",
+        "requirement_ids": [
+          "WW-063",
+          "WW-069"
+        ]
+      },
+      {
+        "block_id": "sync-flow",
+        "part": "inspect",
+        "requirement_ids": [
+          "WW-065",
+          "WW-069"
+        ]
+      },
+      {
+        "block_id": "sync-flow",
+        "part": "save",
+        "requirement_ids": [
+          "WW-027",
+          "WW-063",
+          "WW-064"
+        ]
+      }
+    ],
+    "section": "d0a32c45-ca6e-461d-8355-258d95c322b8",
+    "title": "Guide to live updates and protected edits",
+    "description": "**Information — non-normative.** This guide summarizes the linked synchronization and authoring requirements.\n\n### Timing and recovery\n\n| Situation | Expected behavior |\n| --- | --- |\n| Visible, online tab; healthy server and network | Show committed updates within 5 seconds |\n| Hidden or suspended tab | Visible-tab timing target does not apply |\n| Tab becomes visible or connection recovers | Check immediately and meet the 5-second target under healthy conditions |\n| Transient failure | Bounded backoff and jitter; retry interval at most 30 seconds |\n| Access blocked | Stop unauthorized delivery and show access recovery |\n\n### Saved state and pending work\n\nThe background read model follows the newest committed workspace version. A dirty editor retains its own saved base, typed fields, focus, and target proposal.\n\nA remote update may refresh surrounding data. It cannot authorize saving old input with a new token or applying a diff that the reviewer has not inspected.\n\n### Recovery choices\n\n1. Keep pending input when a conflict arrives.\n2. Inspect the latest saved content.\n3. Explicitly reconcile or discard the pending edit.\n4. Save only to a currently valid Draft using the reconciled base.\n\nIf a proposal closes or an item is deleted, preserve recoverable input and request an explicit destination choice. Do not recreate, retarget, reopen, or rebase automatically.\n\nSynchronization is read-only. It updates the selected accepted/proposal view and snapshot associations while preserving frozen content, evidence, and proposal boundaries.",
+    "criteria": [],
+    "priority": "High",
+    "status": "Draft",
+    "parameters": {},
+    "links": [],
+    "tags": [],
+    "id": "WW-096",
+    "revision": 1
+  }
+]

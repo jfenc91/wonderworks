@@ -9,9 +9,9 @@ import {canonical,isStale,sameRequirement} from '@/lib/workflow';
 import {tagsOf,tagInventory} from '@/lib/tags';
 import type {Workspace,Requirement,ChangeProposal} from '@/lib/types';
 
-export type AuthoringSession={base:Workspace;contextId:string;initial:Partial<Requirement>};
+export type AuthoringSession={base:Workspace;entryPoint?:'requirements'|'changes';contextId:string;initial:Partial<Requirement>};
 export type AuthoringHandle={navigate:(next:()=>void)=>void};
-type Props={doc:Workspace;session:AuthoringSession;busy:boolean;mutate:(action:string,data:Record<string,unknown>,base:Workspace)=>Promise<Workspace>;onClose:()=>void;onSaved:(proposal:ChangeProposal,requirementId:string,close:boolean)=>void};
+type Props={doc:Workspace;session:AuthoringSession;busy:boolean;mutate:(action:string,data:Record<string,unknown>,base:Workspace)=>Promise<Workspace>;onClose:()=>void;onSaved:(proposal:ChangeProposal,requirementId:string,close:boolean,savedWorkspace:Workspace)=>void};
 const source=(doc:Workspace,context:string,id?:string)=>(context?doc.proposals?.find(p=>p.id===context)?.requirements:doc.requirements)?.find(r=>r.id===id);
 export function proposalLabel(doc:Workspace,p:ChangeProposal){return `${p.id} · ${p.title} · ${p.status} · Base v${p.baseVersion}${isStale(doc,p)?' · Stale':''}`;}
 function Content({value}:{value:unknown}){return <pre className="authoring-content">{JSON.stringify(value??'Not present',null,2)}</pre>;}
@@ -70,7 +70,7 @@ export const ProposalAuthoring=forwardRef<AuthoringHandle,Props>(function Propos
       const id=draft.id??p.requirements.at(-1)?.id??'';
       const unchanged=latestSignature.current===request.signature&&inputEpoch.current===request.epoch;
       pending.current=null;setUncertain(false);setPicker(false);setConfirmDelete(false);
-      onSaved(p,request.intent==='delete'?'':id,unchanged);
+      onSaved(p,request.intent==='delete'?'':id,unchanged,result);
       if(unchanged){const next=navigationSave.current?navigation.current:null;navigation.current=null;next?.();}
       else{
         // An acknowledged save can establish a new edit base; later read-model
@@ -92,7 +92,7 @@ export const ProposalAuthoring=forwardRef<AuthoringHandle,Props>(function Propos
     {missing&&!sourceMissing&&<div className="error-box" role="status">{draft.id} is absent from this destination. Choose another proposal or restore it through Changes before editing. This save cannot resurrect it.</div>}
     {conflict&&<section className="edit-conflict"><strong>This destination has different saved content</strong><p>Compare your pending input with the staged requirement before replacing it.</p><details open><summary>Saved destination</summary><Content value={destinationSource}/></details><details><summary>Pending input</summary><Content value={pendingContent}/></details><button type="button" className="secondary" disabled={busy||uncertain} onClick={()=>setResolved(conflictKey)}>Use my pending values in this proposal</button></section>}</>;
   return <>
-    <Sheet open modal={false} onOpenChange={open=>{if(!open)navigate(onClose);}}><SheetContent className="requirement-editor" onInteractOutside={e=>e.preventDefault()}><SheetTitle>{draft.id?'Edit '+draft.id:'New requirement'}</SheetTitle><SheetDescription>{session.contextId?proposalLabel(doc,doc.proposals?.find(p=>p.id===session.contextId)??session.base.proposals!.find(p=>p.id===session.contextId)!):'Latest accepted requirements'} · Saves are staged for review.</SheetDescription>
+    <Sheet open modal={false} onOpenChange={open=>{if(!open)navigate(onClose);}}><SheetContent className="requirement-editor" onCloseAutoFocus={e=>e.preventDefault()} onInteractOutside={e=>e.preventDefault()}><SheetTitle>{draft.id?'Edit '+draft.id:'New requirement'}</SheetTitle><SheetDescription>{session.contextId?proposalLabel(doc,doc.proposals?.find(p=>p.id===session.contextId)??session.base.proposals!.find(p=>p.id===session.contextId)!):'Latest accepted requirements'} · Saves are staged for review.</SheetDescription>
       <form ref={form} className="editor-form" onInput={()=>inputEpoch.current++} onSubmit={e=>{e.preventDefault();begin('save');}}>
         {!picker&&comparison}
         <label>Item kind<select aria-label="Item kind" value={kindOf(draft)} onChange={e=>{const information=e.target.value==='information';setDraft({...draft,kind:e.target.value as Requirement['kind'],...(information?{status:draft.status==='Implemented'?'Draft':draft.status}:{summarizes:[],diagram_mappings:[]})});if(information){setCriteria('');setParameters('{}');setLinks('');}}}><option value="requirement">Requirement</option><option value="information">Information · non-normative</option></select></label>
