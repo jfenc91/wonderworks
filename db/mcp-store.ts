@@ -21,16 +21,18 @@ export class McpStore {
     if(row.fingerprint!==fingerprint)throw new ToolError('IDEMPOTENCY_KEY_REUSED','This idempotency key was already used with different arguments.');
     return JSON.parse(row.result) as Record<string,unknown>;
   }
-  async commit(doc:Workspace,expected:number,receipt:Receipt,now:number){
+  async commit(doc:Workspace,expected:number,receipt:Receipt,now:number,unchanged=false){
     // D1 batch is a transaction: INSERT and UPDATE see the same version and
     // either both persist or both roll back. A conflicting retry reads its receipt.
+    // A normalized no-op still saves a durable receipt under the version gate,
+    // but keeps the workspace version and its metadata timestamps unchanged.
     try{
       const results=await this.db.batch([
         this.db.prepare('DELETE FROM mcp_receipts WHERE expires_at<=?').bind(now),
         this.db.prepare('INSERT INTO mcp_receipts (key,project,fingerprint,result,expires_at) SELECT ?,?,?,?,? FROM workspaces WHERE id=? AND version=?')
           .bind(receipt.key,doc.id,receipt.fingerprint,JSON.stringify(receipt.result),receipt.expiresAt,doc.id,expected),
         this.db.prepare('UPDATE workspaces SET data=?,version=? WHERE id=? AND version=?')
-          .bind(JSON.stringify({...doc,version:expected+1}),expected+1,doc.id,expected)
+          .bind(JSON.stringify({...doc,version:expected+(unchanged?0:1)}),expected+(unchanged?0:1),doc.id,expected)
       ]);
       if(results[2].meta.changes===1)return receipt.result;
     }catch(error){

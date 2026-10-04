@@ -29,7 +29,7 @@ test('MCP transport, authentication boundary, and contract discovery',async t=>{
     const init=await rpc('initialize',{protocolVersion:version,capabilities:{},clientInfo:{name:'Integration QA',version:'1.0'}},{auth:false,headers:{'MCP-Protocol-Version':version}});
     assert.equal(init.status,200);assert.equal(init.body.result.protocolVersion,version);
   }
-  const catalog=await rpc('tools/list',{}, {auth:false});assert.equal(catalog.body.result.tools.length,16);
+  const catalog=await rpc('tools/list',{}, {auth:false});assert.equal(catalog.body.result.tools.length,18);
   assert.ok(catalog.body.result.tools.every(t=>t.inputSchema.additionalProperties===false&&t.outputSchema.type==='object'));
   assert.ok(!JSON.stringify(catalog).includes('Asteroids'));
   assert.equal((await rpc('tools/call',{name:'list_projects',arguments:{}},{auth:false})).status,401);

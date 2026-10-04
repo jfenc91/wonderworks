@@ -130,3 +130,31 @@ node --import tsx --test test/requirement-history.test.mjs test/requirement-hist
 ```
 
 These checks cover every field, lifecycle cycles, pending provenance, multi-requirement application/deletion, legacy/import gaps, immutable snapshots, >500 Activity entries, pagination, overlapping project IDs, stale and invalid writes, forced real-D1 storage failures, and durable retries across worker replacement. The versioned report at `/verification/cp-003.json` identifies the executed checks and their exact requirement baseline.
+
+### Snapshot implementation references (CP-004 / Wonderworks BL-005)
+
+Applied proposals show **First included in** using the existing `appliedSnapshot` and `appliedVersion` recorded during atomic application. The link opens that exact frozen snapshot; snapshot details link back to proposals first included there. Draft, Proposed and Rejected proposals show **Not yet included**. Applied legacy proposals without an available saved target show **First included snapshot unknown**, retain their original reference, and never infer inclusion from matching content or a later snapshot.
+
+Snapshot details have an **Implementation commit** editor with add, replace, copy, cancel and explicit clear. Commit IDs trim surrounding whitespace, normalize to lowercase, and require 40 or 64 hexadecimal characters. An optional commit URL must be absolute HTTPS, at most 2048 characters, without credentials. An optional repository must belong to this project. Its identity, name, URL and branch are captured when linked; subsequent repository renames/removal leave the recorded context intact. Edits retaining that same association retain the captured context, even after removal. A removed repository cannot be newly assigned to another snapshot. No provider URL is invented or remote commit existence checked.
+
+A proposal derives its commit from its first-included snapshot. The same commit may be recorded on several snapshots; recording one on a later snapshot never retargets an earlier proposal. These are user-recorded references, separate from requirement status, acceptance dates and passing verification.
+
+`snapshotImplementations` stores current references and append-only before/after corrections outside frozen baselines. Corrections record server time and trusted actor when available (otherwise explicitly unknown), appear in recent Activity, and remain available through snapshot details after the 500-entry Activity cap. Workspace imports ignore supplied association metadata and preserve the existing authoritative metadata/history. Frozen snapshots and JSON exports remain exact. No migration or read-time backfill is required.
+
+The MCP catalog has 18 tools. `list_snapshots` adds `implementation_commit` (explicit null when empty), `implementation_updated_at`, and `implementation_actor`. `get_snapshot` returns its unchanged `snapshot` plus separate `associations` with those fields and `first_included_proposals`. Proposal list/detail responses add `first_included` with `state: known | not_yet_included | unknown`, the resolved snapshot identity/version or null, `original_snapshot_id`, and derived implementation metadata. Existing proposal fields, review outcomes, diffs and conflicts remain available.
+
+`set_snapshot_implementation` requires `project_id`, `baseline_id`, `expected_workspace_version`, `idempotency_key`, and `implementation_commit`. A non-null object contains `commit_id` and optional `repository_id` and `commit_url`. **It replaces the entire reference: omitted optional fields are removed.** Explicit null clears; omitting `implementation_commit` is invalid. The UI preserves unchanged optional fields during editing. Successful responses return project/snapshot identity, current implementation metadata, both versions and a correlation ID.
+
+The application uses `POST /api/snapshot-implementation` with the same arguments, domain service and durable receipts as MCP. The endpoint inherits the existing Sites application audience boundary, checks exact same-origin requests, and bounds streamed request bodies. Meaningful writes atomically save the reference, correction, Activity, receipt and one workspace version advance. Requirement-set versions and lifecycle history are unchanged. Identical normalized values retain the current workspace version, metadata timestamp and history; they still receive a durable retry receipt. Retry identical arguments and key after an uncertain result. Stale writes return `CONFLICT`; the editor offers to reload latest while retaining unsaved input.
+
+`GET /api/snapshot-implementation?project_id=<id>&baseline_id=<id>` returns the same snapshot/associations as MCP. Add `history=1` for correction history; the matching MCP reader is `get_snapshot_implementation_history`. Both require explicit project/snapshot IDs, return newest first, default to 50 results and accept `limit` 1–100 plus `cursor`. Cursors bind actor, project, snapshot, limit and workspace version. Malformed or mismatched cursors return `INVALID_CURSOR`; concurrent changes return `RESTART_REQUIRED`. Restart without a cursor.
+
+Run the complete regression suite against a loopback preview:
+
+```sh
+node --import tsx --test test/*.test.mjs
+node node_modules/typescript/bin/tsc --noEmit
+npm run build
+```
+
+CP-004 checks are in `test/snapshot-implementation*.test.mjs`: mixed application and reverse associations, legacy/unknown provenance, later snapshots, validation, optional field replacement, repository removal, imports, isolation, pagination, no-ops, rollback, concurrency and durable retries across real D1 worker replacement. `/verification/cp-004.json` records executed outcomes against Wonderworks BL-005, including browser verification. Local verification does not claim a hosted deployment or a remote commit check.

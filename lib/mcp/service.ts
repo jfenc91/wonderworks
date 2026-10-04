@@ -8,12 +8,13 @@ import {toolMap} from './contracts';
 import {ToolError} from './errors';
 import type {McpStore} from '../../db/mcp-store';
 import {captureRequirementHistory,requirementHistory,requirementHistoryPage} from '../requirement-history';
+import {firstInclusion,implementationMetadata,requireSnapshot,setSnapshotImplementation,snapshotAssociations} from '../snapshot-implementation';
 
-export type Actor={id:string;clientName?:string};
+export type Actor={id:string|null;clientName?:string};
 export type Store=Pick<McpStore,'list'|'read'|'replay'|'commit'>;
 export async function digest(value:unknown){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical(value))))).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const versions=(doc:Workspace)=>({project_id:doc.id,workspace_version:doc.version,requirements_version:setVersion(doc)});
-function summary(doc:Workspace,p:ChangeProposal){const {baseRequirements,baseSections,requirements,...metadata}=p;return {...metadata,stale:isStale(doc,p),change_count:requirementChanges(baseRequirements,requirements).length};}
+function summary(doc:Workspace,p:ChangeProposal){const {baseRequirements,baseSections,requirements,...metadata}=p;return {...metadata,first_included:firstInclusion(doc,p),stale:isStale(doc,p),change_count:requirementChanges(baseRequirements,requirements).length};}
 function inspect(doc:Workspace,p:ChangeProposal){return {...summary(doc,p),baseRequirements:p.baseRequirements,baseSections:p.baseSections,requirements:p.requirements,changes:requirementChanges(p.baseRequirements,p.requirements),conflicts:proposalConflicts(doc,p).map(id=>({id,base:p.baseRequirements.find(r=>r.id===id)??null,proposed:p.requirements.find(r=>r.id===id)??null,latest:doc.requirements.find(r=>r.id===id)??null}))};}
 function found<T>(value:T|undefined,type:string):T{if(!value)throw new ToolError('NOT_FOUND',`${type} not found in this project.`);return value;}
 
@@ -60,7 +61,7 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
   const definition=toolMap.get(name);
   if(!definition)throw new ToolError('UNKNOWN_TOOL','Unknown tool.');
   const parsed=definition.input.safeParse(raw);
-  if(!parsed.success)throw new ToolError('VALIDATION_ERROR','Invalid tool arguments.',{fields:parsed.error.issues.map(i=>({path:i.path.join('.'),message:i.message}))});
+  if(!parsed.success)throw new ToolError('VALIDATION_ERROR',name==='set_snapshot_implementation'?'Check the implementation reference.':'Invalid tool arguments.',{fields:parsed.error.issues.map(i=>({path:i.path.join('.'),message:i.message}))});
   const args=parsed.data as Record<string,any>;
   if(name==='list_requirements')args.tags=normalizeTags(args.tags);
   if(name==='list_projects'){
@@ -74,12 +75,16 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
       case 'get_project':return {...v,id:doc.id,name:doc.name,prefix:doc.prefix,sections:doc.sections,repositories:doc.repositories??[]};
       case 'get_requirement':return {...v,requirement:withTags(found(doc.requirements.find(r=>r.id===args.requirement_id),'Requirement')),lifecycle:requirementHistory(doc,args.requirement_id).lifecycle,coverage:requirementHistory(doc,args.requirement_id).coverage};
       case 'get_requirement_history':return requirementHistoryPage(doc,args.requirement_id,args);
-      case 'get_snapshot':return {...v,snapshot:found(doc.baselines.find(b=>b.id===args.baseline_id),'Snapshot')};
+      case 'get_snapshot':return {...v,snapshot:requireSnapshot(doc,args.baseline_id),associations:snapshotAssociations(doc,args.baseline_id)};
+      case 'get_snapshot_implementation_history':{
+        requireSnapshot(doc,args.baseline_id);
+        return {...v,baseline_id:args.baseline_id,...implementationMetadata(doc,args.baseline_id),...await paginate([...(doc.snapshotImplementations?.[args.baseline_id]?.history??[])].reverse(),args,{name,actor:actor.id},doc.version)};
+      }
       case 'get_proposal':return {...v,proposal:inspect(doc,found(doc.proposals?.find(p=>p.id===args.proposal_id),'Proposal'))};
       default:{
         let items:unknown[]=[];
         if(name==='list_requirements')items=doc.requirements.filter(r=>matchesRequirement(r,args)).map(withTags);
-        if(name==='list_snapshots')items=doc.baselines.map(({requirements,sections,repositories,...meta})=>meta);
+        if(name==='list_snapshots')items=doc.baselines.map(({requirements,sections,repositories,...meta})=>({...meta,...implementationMetadata(doc,meta.id)}));
         if(name==='list_proposals')items=(doc.proposals??[]).map(p=>summary(doc,p));
         if(name==='list_evidence')items=doc.evidence.filter(e=>!args.baseline_id||e.baseline===args.baseline_id);
         return {...v,...await paginate(items,args,{name,actor:actor.id},doc.version)};
@@ -94,9 +99,15 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
   if(args.expected_workspace_version!==doc.version)throw new ToolError('CONFLICT','Workspace changed. Reload the project before making a new write.',{current_workspace_version:doc.version});
   const result:Record<string,unknown>={...versions(doc),workspace_version:doc.version+1,correlation_id:correlationId};
   let objectIds:string[]=[];
+  let unchanged=false;
   const original=structuredClone(doc),history=structuredClone(doc.history);
   try{
     switch(name){
+      case 'set_snapshot_implementation':{
+        unchanged=!setSnapshotImplementation(doc,args.baseline_id,args.implementation_commit,{id:actor.id,...(actor.clientName?{reportedClientName:actor.clientName}:{})},new Date(now).toISOString());
+        Object.assign(result,{baseline_id:args.baseline_id,...implementationMetadata(doc,args.baseline_id),workspace_version:doc.version+(unchanged?0:1)});
+        objectIds=[args.baseline_id];break;
+      }
       case 'create_proposal':{const p=createProposal(doc,args);result.proposal_id=p.id;result.status=p.status;objectIds=[p.id];break;}
       case 'update_proposal':updateProposal(doc,args.proposal_id,args);break;
       case 'stage_proposal_changes':{const refs=stage(doc,args.proposal_id,args.operations);result.client_refs=refs;objectIds=[...Object.values(refs),...args.operations.flatMap((op:any)=>op.requirement_id?[op.requirement_id]:[])];break;}
@@ -123,9 +134,16 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
   }
   // One attributable event per atomic write, including on a large staged batch.
   doc.history=history;
+  if(!unchanged){
   record(doc,`MCP ${name} · ${[...new Set(objectIds)].join(', ')}`,name==='stage_proposal_changes'?objectIds.filter(id=>id!==args.proposal_id):undefined);
-  doc.history[0].mcp={actorId:actor.id,...(actor.clientName?{clientName:actor.clientName}:{}),tool:name,projectId:doc.id,objectIds:[...new Set(objectIds)],correlationId};
+  doc.history[0].mcp={actorId:actor.id??'unknown',...(actor.clientName?{clientName:actor.clientName}:{}),tool:name,projectId:doc.id,objectIds:[...new Set(objectIds)],correlationId};
+  if(name==='set_snapshot_implementation'){
+    doc.history[0].snapshotImplementation=structuredClone(doc.snapshotImplementations![args.baseline_id].history.at(-1)!);
+    doc.history[0].date=doc.snapshotImplementations![args.baseline_id].updated_at;
+    doc.history[0].message=`Implementation commit ${args.implementation_commit?'recorded':'cleared'} · ${args.baseline_id}`;
+  }
   captureRequirementHistory(original,doc,{source:name,actor:{id:actor.id,...(actor.clientName?{reportedClientName:actor.clientName}:{})}});
+  }
   definition.output.parse(result);
-  return store.commit(doc,args.expected_workspace_version,{key,project:doc.id,fingerprint,result,expiresAt:now+24*60*60*1000},now);
+  return store.commit(doc,args.expected_workspace_version,{key,project:doc.id,fingerprint,result,expiresAt:now+24*60*60*1000},now,unchanged);
 }

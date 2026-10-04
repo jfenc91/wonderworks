@@ -1,0 +1,68 @@
+{
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "proposal_id": "CP-004",
+  "baseline": "BL-005",
+  "baseline_date": "2026-10-04T03:37:07.258Z",
+  "requirements_version": 5,
+  "requirement_revisions": [
+    {
+      "id": "WW-037",
+      "revision": 3
+    },
+    {
+      "id": "WW-058",
+      "revision": 1
+    },
+    {
+      "id": "WW-059",
+      "revision": 1
+    },
+    {
+      "id": "WW-060",
+      "revision": 1
+    }
+  ],
+  "executed_at": "2026-10-04T04:36:15Z",
+  "summary": "Local CP-004 implementation verification: 69 automated checks passed, TypeScript and targeted ESLint checks passed, production build passed, and browser flows verified at desktop and 390px compact width.",
+  "automated": {
+    "passed": 69,
+    "failed": 0,
+    "command": "node --import tsx --test test/*.test.mjs",
+    "specific_files": [
+      "test/snapshot-implementation.test.mjs",
+      "test/snapshot-implementation-api.test.mjs",
+      "test/snapshot-implementation-store.test.mjs"
+    ],
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "lint": "node node_modules/eslint/bin/eslint.js components/snapshot-implementation.tsx lib/snapshot-implementation.ts app/api/snapshot-implementation/route.ts",
+    "build": "node scripts/run-framework.mjs build"
+  },
+  "checks": [
+    {
+      "id": "WW-037",
+      "title": "Read exact frozen context and separate current associations",
+      "passed": true,
+      "detail": "API/MCP agreement verified for snapshot identity, exact unchanged frozen payload, explicit null metadata, first-included proposals, derived proposal commits, history and list schemas. Reads do not write; all 18 tools are discoverable. Existing MCP authentication rejection regression checks pass."
+    },
+    {
+      "id": "WW-058",
+      "title": "Stable proposal inclusion and reciprocal navigation",
+      "passed": true,
+      "detail": "Tests cover additions/edits/deletions applied atomically to one snapshot, pending/rejected states, request-changes/rebase, valid legacy references, unknown and unavailable provenance, same-project resolution, and original-link stability after later snapshots and edits. Real D1 failure rolls back application and association. Browser verified keyboard proposal-to-snapshot and snapshot-to-proposal navigation and exact frozen requirements."
+    },
+    {
+      "id": "WW-059",
+      "title": "Editable snapshot commits with immutable content and durable corrections",
+      "passed": true,
+      "detail": "Tests verify 40/64-character normalization, invalid/empty/abbreviated IDs, malformed/relative/non-HTTPS/credentialed/oversize URLs, optional-field whole replacement, explicit clear, no-ops, repository rename/removal, shared commit across snapshots, and preserved snapshots, nonempty evidence, requirement revisions and lifecycle events. 508 corrections survived the 500-entry Activity cap. Imports omit or forge metadata without replacing local records. Browser verified add, replace, copy, cancel, validation input retention, clear, removed-repository preservation, saved history, reload, and 390px layout."
+    },
+    {
+      "id": "WW-060",
+      "title": "Shared API/MCP persistence, retries, isolation and executed outcomes",
+      "passed": true,
+      "detail": "Dedicated application endpoint and set_snapshot_implementation tool share validation and durable idempotency. Tests cover stale saves, cross-project isolation with overlapping IDs, missing targets, query-bound bounded history and invalidated cursors, origin rejection, receipt rollback, competing writes, duplicate durable retries, normalized no-op receipts and worker replacement with real D1. Browser verified stale-save rejection, retained input, reload-and-retry recovery, and derived proposal display. This report is tied to BL-005 and the exact listed revisions."
+    }
+  ],
+  "verification_scope": "Local implementation and loopback preview verification only. Hosted CP-004 deployment and hosted OAuth/revocation have not been performed or re-tested. No requirement lifecycle status is changed. Commit references are user-supplied metadata; tests do not clone repositories or validate remote commit existence.",
+  "artifact_url": "http://127.0.0.1:5173/verification/cp-004.json"
+}

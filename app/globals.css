@@ -31,3 +31,13 @@
 @media(max-width:1100px){.mobile-history{display:block;padding:0 20px}.mobile-history .lifecycle-dates{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.requirement-history-reader{padding:22px 16px}.requirement-history-reader>.lifecycle-dates,.history-values{grid-template-columns:1fr}.requirement-timeline article{padding:14px}}
 @media(prefers-reduced-motion:reduce){.requirement-history-reader{animation:none!important;transition:none!important}}
+
+/* Snapshot associations remain visually separate from frozen requirements. */
+.snapshot-inclusion,.snapshot-implementation,.proposal-inclusion{border:1px solid var(--border);border-radius:10px;padding:18px;margin:18px 0;min-width:0}
+.snapshot-inclusion h3,.snapshot-implementation h3,.proposal-inclusion h4{font-weight:600;margin:0 0 10px}
+.proposal-inclusion h4:not(:first-child){margin-top:18px}
+.snapshot-inclusion .dependency-link,.proposal-inclusion .dependency-link{white-space:normal;text-align:left;overflow-wrap:anywhere;max-width:100%}
+.commit-reference{margin:10px 0;min-width:0;overflow-wrap:anywhere}.commit-reference code{user-select:all;overflow-wrap:anywhere;font-size:12px}.commit-reference p{margin:8px 0}
+.implementation-history{margin-top:18px}.implementation-history summary{cursor:pointer}.implementation-history article{padding:16px 0;border-bottom:1px solid var(--border);font-size:12px}.implementation-history article>p{margin-bottom:10px}
+.snapshot-implementation select{width:100%;min-width:0;padding:10px;background:var(--background);border:1px solid var(--border);border-radius:6px;color:inherit}
+.snapshot-implementation .editor-actions{flex-wrap:wrap}.snapshot-reader{overflow-wrap:anywhere}

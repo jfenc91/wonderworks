@@ -8,12 +8,12 @@ const object=(value:unknown):value is Record<string,any>=>!!value&&typeof value=
 const response=(body:unknown,status=200,headers:Record<string,string>={})=>Response.json(body,{status,headers:{'Cache-Control':'no-store',...headers}});
 const rpcError=(id:unknown,error:ProtocolError)=>response({jsonrpc:'2.0',id:id??null,error:{code:error.code,message:error.message,...(error.data?{data:error.data}:{})}},error.status);
 
-function originAllowed(request:Request){
+export function originAllowed(request:Request){
   const origin=request.headers.get('origin');
   if(!origin)return true;
   try{return new URL(origin).origin===origin&&origin===new URL(request.url).origin;}catch{return false;}
 }
-async function readBody(request:Request){
+export async function readBody(request:Request){
   if(Number(request.headers.get('content-length'))>MAX_REQUEST_BYTES)throw new ProtocolError(-32600,'Request exceeds 250000 bytes.',413);
   const reader=request.body?.getReader();if(!reader)throw new ProtocolError(-32700,'A JSON request body is required.');
   const chunks:Uint8Array[]=[];let size=0;
