@@ -2,6 +2,7 @@ import {readWorkspace,saveWorkspace,listWorkspaces,createWorkspace} from '@/db/w
 import {upsert,record,validateDependencies,reconcileWorkspace} from '@/lib/requirements';
 import {saveRepository,createProposal,updateProposal,editProposalRequirement,deleteProposalRequirement,restoreProposalRequirement,submitProposal,rebaseProposal,reviewProposal,snapshot,setContent,setVersion} from '@/lib/workflow';
 import {z} from 'zod';
+import {recordEvidence} from '@/lib/evidence';
 export const dynamic='force-dynamic';
 
 export async function GET(request:Request){
@@ -57,13 +58,7 @@ export async function POST(request:Request){
         doc.requirements=doc.requirements.filter(r=>r.id!==req.id);record(doc,`${req.id} deleted · ${req.title}`);break;
       }
       case 'baseline':snapshot(doc,input.name);break;
-      case 'evidence':{
-        const evidence=z.object({baseline:z.string(),artifactUrl:z.string().url().refine(s=>['https:','http:'].includes(new URL(s).protocol)),summary:z.string().min(10).max(3000),checks:z.array(z.object({id:z.string(),title:z.string(),passed:z.boolean(),detail:z.string()})).min(1).max(150)}).parse(input.evidence);
-        const baseline=doc.baselines.find(b=>b.id===evidence.baseline);if(!baseline)throw Error('Baseline not found');
-        if(evidence.checks.some(c=>!baseline.requirements.some(r=>r.id===c.id)))throw Error('Every result must reference a requirement in its baseline');
-        doc.evidence.unshift({...evidence,id:crypto.randomUUID(),date:new Date().toISOString()});
-        record(doc,`Verification recorded for ${evidence.baseline} · ${evidence.checks.filter(c=>c.passed).length}/${evidence.checks.length} passed`);break;
-      }
+      case 'evidence':recordEvidence(doc,input.evidence);break;
       default:throw Error('Unknown workspace action');
     }
     if(setContent(doc)!==before && setVersion(doc)===previousVersion)doc.requirementsVersion=previousVersion+1;

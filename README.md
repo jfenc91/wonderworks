@@ -46,6 +46,44 @@ AI implementation in this delivery was performed by Codex from the exported base
 
 ## Validation
 
+### Remote MCP (CP-001 / Wonderworks BL-002)
+
+The Site exposes a stateless Streamable HTTP endpoint at `/mcp`. The **Connect assistant** link opens setup instructions at `/integrations`. Sites provisions the existing Site's private App/plugin and manages OAuth. Install or connect **Wonderworks** in **Plugins → Personal → Created by you**. The provisioned plugin supplies the exact MCP URL and OAuth resource; do not configure a separate OAuth provider or use the service bypass token for user MCP calls. Disconnect or revoke the connection from the assistant's plugin settings.
+
+The current transport supports protocol revisions `2025-11-25`, `2025-06-18`, and `2025-03-26`, including `initialize`, `notifications/initialized`, `ping`, `tools/list`, and `tools/call`. GET/DELETE return 405; there are no sessions, SSE subscriptions, resources, prompts, or background jobs. Requests need `Content-Type: application/json`, `Accept: application/json, text/event-stream`, and the negotiated `MCP-Protocol-Version` after initialization. The 2026 revision is not advertised; clients must negotiate one of the supported revisions. See the [MCP transport specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) and [tool specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools).
+
+| Tools | Scope |
+| --- | --- |
+| `list_projects`, `get_project` | Project identity, sections, repository metadata, workspace and requirement-set versions |
+| `list_requirements`, `get_requirement` | Current requirements with search, section/status filters, and exact revisions |
+| `list_snapshots`, `get_snapshot` | Metadata and exact immutable snapshots, preserving absent legacy fields |
+| `list_proposals`, `get_proposal` | Review status, staged content, field differences, and base/proposed/latest conflicts |
+| `create_proposal`, `update_proposal`, `stage_proposal_changes` | Persist Drafts and atomic batches of 1–100 additions, edits, deletions, or restorations |
+| `submit_proposal`, `rebase_proposal` | Submit for human review or refresh onto the latest set with explicit conflict resolutions |
+| `list_evidence`, `record_evidence` | Read and record baseline-specific external verification outcomes |
+
+Every operation except `list_projects` requires `project_id`; there is no active-project fallback. List tools default to 50 results, allow 1–100, and return an opaque `next_cursor`. Reuse all query arguments with that cursor. If the workspace changes, `RESTART_REQUIRED` instructs the client to restart the list. Tool discovery contains no private workspace data.
+
+Every write requires `expected_workspace_version` (from a fresh read) and `idempotency_key` (8–128 letters, digits, `.`, `_`, `:`, or `-`). Reuse **identical arguments and the same key** after a lost response. Durable receipts are scoped to authenticated actor, project, and tool, and retained for at least 24 hours. A replay returns the original result before checking the now-stale version; changed arguments return `IDEMPOTENCY_KEY_REUSED`. After expiry, inspect the saved object before issuing a new write. Concurrent new writes return `CONFLICT` with `current_workspace_version` instead of overwriting changes.
+
+`stage_proposal_changes` accepts `operations`: `add` supplies `client_ref` and full `requirement` fields; `edit` supplies `requirement_id` and full fields; `delete`/`restore` supply `requirement_id`. A link such as `$foundation` resolves an addition with `client_ref: "foundation"` anywhere in the same batch. The result returns `client_refs` mapping these aliases to permanent IDs. Validation runs on the complete staged set, and a rejected batch persists neither partial changes nor reserved IDs. `rebase_proposal` accepts `resolutions: {"WW-001": "proposed"}` or `"latest"` for every current overlap.
+
+Applying, rejecting, and requesting changes remain in **Changes** in the UI. Remote tools cannot directly edit current requirements, approve statuses, create baselines, import workspaces, or manage projects, sections, and repository links. Evidence does not change requirement status or claim the server ran the tests.
+
+Sites dispatch enforces the existing audience and supplies trusted `oai-authenticated-user-id` and email headers. Data calls require that identity; service bypass credentials are explicitly rejected. All projects share the Site's current access boundary, rather than introducing unsupported project roles. Do not expose this Worker behind a proxy that forwards untrusted identity headers. The portable Sites middleware strips forged headers and emulates sign-in only on loopback. Origin must be absent or exactly the request origin. The body limit is 250000 UTF-8 bytes, checked while streaming. Runtime errors expose only safe messages and correlation IDs. Each successful write creates one attributable activity entry; client names from `_meta["io.modelcontextprotocol/clientInfo"].name` are untrusted reported metadata. No process-local client identity is remembered.
+
+Apply the new `drizzle/0001_lowly_talos.sql` migration to an existing local database before testing. Production migrations are part of Sites publishing. Receipts and the workspace save use a single D1 transaction; no runtime schema creation is used.
+
+With the local preview running:
+
+```sh
+node --import tsx --test test/mcp-api.test.mjs test/mcp-store.test.mjs test/workflow-api.test.mjs
+```
+
+The store tests use an isolated real Miniflare D1 database, force a save failure after receipt insertion, replace the worker, and verify rollback and durable retry behavior. HTTP tests cover all 15 tools, schemas, authentication rejection, stale pagination, staging, rebase, apply-and-snapshot through the existing API, mixed evidence, and concurrency. These tests create QA projects only in loopback databases.
+
+An independent official client probe is available in `test/mcp-sdk-client.mjs`. Install `@modelcontextprotocol/sdk@1.32.0` in a separate test directory and set `MCP_SDK_ROOT` to that package's absolute path, then run `node test/mcp-sdk-client.mjs`. It verifies discovery and reads over HTTP without a browser, using only local emulated sign-in. Hosted OAuth, audience enforcement, and revocation must also be verified through the published Site plugin; local sign-in is not evidence of those hosting checks.
+
 ```sh
 node node_modules/typescript/bin/tsc --noEmit
 npm run build
