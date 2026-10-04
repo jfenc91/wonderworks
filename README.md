@@ -26,6 +26,22 @@ Apply the migration once to a new local database. Development uses `http://127.0
 - Evidence contains `baseline`, `artifactUrl`, `summary`, and `checks` with `id` (requirement ID), `title`, `passed`, and `detail`. Evidence is linked to the baseline tested; future revisions do not silently inherit it.
 - Browser WebMCP tools expose the same read, section, requirement, and baseline operations as the interface where supported.
 
+## Repositories, change proposals, and snapshots
+
+Each project can link multiple Git repository web URLs with optional branch names. Links are metadata; Wonderworks does not clone repositories, read private code, or synchronize commits.
+
+Requirement sets have their own `requirementsVersion`, independent of the workspace save counter. Existing projects start at set v1. Changes to requirements or sections advance this version; repository edits, proposal drafts, and snapshot creation do not.
+
+Create a proposal in **Changes**, then use **Edit requirement batch** to stage additions, edits, and deletions. Staged changes are persisted separately from the latest set. Submit the batch to review field-by-field before/after differences. Reviewers can request changes, reject the proposal, or apply the entire batch. Applying advances the set version once and creates an immutable snapshot in the same database update. This remains a private workspace workflow without separate reviewer roles.
+
+If the latest set changes during a proposal, application is blocked. **Refresh from latest** retains unrelated edits and asks the reviewer to choose proposed or latest content for overlapping requirement changes. Refresh returns the proposal to Draft so it must be submitted and reviewed again. Dependencies are validated against the complete proposed result before submission and application.
+
+**Snapshots** preserves existing baselines and supports named snapshots, read-only inspection, and JSON export. New snapshots include requirement-set version, full requirements and sections, and repository links. Legacy baselines retain their original IDs and verification evidence; their historical set versions are not invented.
+
+New API actions are `repository`, `repository_remove`, `proposal`, `proposal_update`, `proposal_requirement`, `proposal_delete`, `proposal_restore`, `proposal_submit`, `proposal_rebase`, and `proposal_review`. The existing `baseline` action creates a snapshot. Every mutation of an existing project still requires its last-read workspace `version`. Browser tools also expose proposal creation, staging, submission, review, and repository linking.
+
+With the local preview running, verify the workflow using `node --test test/workflow-api.test.mjs`. These integration checks create explicitly named QA projects only in a loopback-hosted database and exercise persistence, conflict handling, atomic application, snapshot preservation, and dependency validation.
+
 AI implementation in this delivery was performed by Codex from the exported baseline. The platform does not pretend to run a background code-generation service. New prose requirements require another implementation pass in the separate project.
 
 ## Validation
