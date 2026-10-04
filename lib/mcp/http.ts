@@ -1,3 +1,4 @@
+import {initializationGuidance} from '../agent-guidance';
 import {tools,toolMap} from './contracts';
 import {callTool,type Store} from './service';
 import {ToolError,ProtocolError} from './errors';
@@ -44,7 +45,7 @@ export async function handleMcp(request:Request,store:Store){
     switch(message.method){
       case 'initialize':{
         if(typeof params.protocolVersion!=='string'||!object(params.capabilities)||!object(params.clientInfo)||typeof params.clientInfo.name!=='string'||typeof params.clientInfo.version!=='string')throw new ProtocolError(-32602,'Invalid initialization parameters.');
-        result={protocolVersion:PROTOCOL_VERSIONS.includes(params.protocolVersion)?params.protocolVersion:PROTOCOL_VERSIONS[0],capabilities:{tools:{}},serverInfo:{name:'wonderworks',version:'1.0.0'},instructions:'Use explicit project IDs. Read current workspace_version before writing. Reuse the identical arguments and idempotency key after an uncertain result. Draft and submit requirement proposals; applying remains in Wonderworks. Evidence is tied to the exact saved baseline tested.'};break;
+        result={protocolVersion:PROTOCOL_VERSIONS.includes(params.protocolVersion)?params.protocolVersion:PROTOCOL_VERSIONS[0],capabilities:{tools:{}},serverInfo:{name:'wonderworks',version:'1.0.0'},instructions:initializationGuidance};break;
       }
       case 'ping':result={};break;
       case 'tools/list':{

@@ -18,12 +18,12 @@ export const ProposalAuthoring=forwardRef<AuthoringHandle,Props>(function Propos
   const [base,setBase]=useState(session.base),[origin,setOrigin]=useState({contextId:session.contextId,requirement:session.initial});
   const [draft,setDraft]=useState(session.initial),[criteria,setCriteria]=useState(session.initial.criteria?.join('\n')??''),[parameters,setParameters]=useState(JSON.stringify(session.initial.parameters??{},null,2)),[links,setLinks]=useState(session.initial.links?.join(', ')??'');
   const [target,setTarget]=useState(session.contextId),[picker,setPicker]=useState(false),[title,setTitle]=useState(''),[description,setDescription]=useState(''),[intent,setIntent]=useState<'save'|'delete'>('save'),[confirmDelete,setConfirmDelete]=useState(false),[error,setError]=useState(''),[resolved,setResolved]=useState(''),[switching,setSwitching]=useState(false),[uncertain,setUncertain]=useState(false);
-  const navigation=useRef<(()=>void)|null>(null),tags=useRef<TagEditorHandle>(null),form=useRef<HTMLFormElement>(null),inputEpoch=useRef(0);
+  const navigation=useRef<(()=>void)|null>(null),navigationSave=useRef(false),tags=useRef<TagEditorHandle>(null),form=useRef<HTMLFormElement>(null),inputEpoch=useRef(0);
   const pending=useRef<{args:Record<string,unknown>;signature:string;epoch:number;intent:'save'|'delete';target:string}|null>(null);
   const signature=canonical({draft,criteria,parameters,links});
   const latestSignature=useRef(signature);latestSignature.current=signature;
   const initialSignature=useRef(signature);
-  function navigate(next:()=>void){if(latestSignature.current!==initialSignature.current||inputEpoch.current>0||pending.current){navigation.current=next;setSwitching(true);}else next();}
+  function navigate(next:()=>void){if(latestSignature.current!==initialSignature.current||inputEpoch.current>0||pending.current){navigation.current=next;navigationSave.current=false;setSwitching(true);}else next();}
   useImperativeHandle(ref,()=>({navigate}));
   const destination=doc.proposals?.find(p=>p.id===target),creating=target==='new';
   const latestSource=source(doc,origin.contextId,origin.requirement.id);
@@ -69,7 +69,7 @@ export const ProposalAuthoring=forwardRef<AuthoringHandle,Props>(function Propos
       const unchanged=latestSignature.current===request.signature&&inputEpoch.current===request.epoch;
       pending.current=null;setUncertain(false);setPicker(false);setConfirmDelete(false);
       onSaved(p,request.intent==='delete'?'':id,unchanged);
-      if(unchanged){const next=navigation.current;navigation.current=null;next?.();}
+      if(unchanged){const next=navigationSave.current?navigation.current:null;navigation.current=null;next?.();}
       else{
         // An acknowledged save can establish a new edit base; later read-model
         // versions still require reconciliation. Preserve input typed in flight.
@@ -114,6 +114,6 @@ export const ProposalAuthoring=forwardRef<AuthoringHandle,Props>(function Propos
       <div className="editor-actions"><button type="button" className="ghost" disabled={busy} onClick={cancelPicker}>Cancel destination selection</button><button className="primary" disabled={blocked}>{intent==='delete'?'Continue to deletion':creating?'Create proposal and stage':'Stage in proposal'}</button></div>
     </form></DialogContent></Dialog>
     <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}><DialogContent><DialogTitle>Stage deletion of {draft.id}?</DialogTitle><DialogDescription>Remove {draft.id} · {draft.title} from {creating?'new proposal '+title:destination?.id+' · '+destination?.title}. Accepted requirements and frozen snapshots stay unchanged. Remove dependent links in the proposed set first.</DialogDescription>{comparison}{error&&<p className="error-box" role="alert">{error}</p>}<div className="editor-actions"><button className="ghost" onClick={()=>setConfirmDelete(false)}>Cancel</button><button className="primary" disabled={blocked} onClick={()=>void save('delete')}>Confirm staged deletion</button></div></DialogContent></Dialog>
-    <Dialog open={switching} onOpenChange={open=>{setSwitching(open);if(!open)navigation.current=null;}}><DialogContent><DialogTitle>Keep your pending requirement?</DialogTitle><DialogDescription>Save it to a proposal, discard the pending input, or cancel and continue editing.</DialogDescription><div className="editor-actions"><button className="ghost" onClick={()=>{navigation.current=null;setSwitching(false);}}>Cancel</button><button className="secondary" disabled={busy} onClick={()=>{const next=navigation.current;navigation.current=null;setSwitching(false);next?.();}}>Discard</button><button className="primary" disabled={busy||uncertain} onClick={()=>{setSwitching(false);begin('save');}}>Save to a proposal</button></div></DialogContent></Dialog>
+    <Dialog open={switching} onOpenChange={open=>{setSwitching(open);if(!open)navigation.current=null;}}><DialogContent><DialogTitle>Keep your pending requirement?</DialogTitle><DialogDescription>Save it to a proposal, discard the pending input, or cancel and continue editing.</DialogDescription><div className="editor-actions"><button className="ghost" onClick={()=>{navigation.current=null;setSwitching(false);}}>Cancel</button><button className="secondary" disabled={busy} onClick={()=>{const next=navigation.current;navigation.current=null;setSwitching(false);next?.();}}>Discard</button><button className="primary" disabled={busy||uncertain} onClick={()=>{navigationSave.current=true;setSwitching(false);begin('save');}}>Save to a proposal</button></div></DialogContent></Dialog>
   </>;
 });

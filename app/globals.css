@@ -72,3 +72,4 @@
 .authoring-content {max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;}
 .authoring-destination {border:1px solid var(--border);padding:14px;border-radius:8px;}
 @media(max-width:600px){.editor-actions {flex-wrap:wrap;}.working-context select {font-size:12px;}.destination-dialog{max-width:calc(100vw - 24px);}}
+.guidance-form {max-width:760px;}.guidance-source {display:flex;align-items:center;gap:12px;font-size:12px;font-weight:400;color:var(--muted-foreground);}.guidance-checkbox>span:first-child{display:flex;align-items:center;gap:10px;}.guidance-form .guidance-checkbox input{width:18px;height:18px;}.guidance-help p{font-size:13px;line-height:1.65;margin:12px 0;}.guidance-form input:disabled,.guidance-form textarea:disabled,.guidance-form select:disabled{opacity:.8;}.guidance-form textarea{overflow-wrap:anywhere;}

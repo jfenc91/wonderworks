@@ -1,3 +1,4 @@
+import {projectGuidance} from '../agent-guidance';
 import {ZodError} from 'zod';
 import {normalizeTags,withTags,matchesRequirement} from '../tags';
 import type {Workspace,ChangeProposal} from '../types';
@@ -57,7 +58,7 @@ export function stage(doc:Workspace,proposalId:string,operations:any[]){
   validateSet(doc,p.requirements);p.updatedAt=new Date().toISOString();return refs;
 }
 
-export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,correlationId:string,now=Date.now()):Promise<Record<string,unknown>>{
+async function callToolCore(store:Store,name:string,raw:unknown,actor:Actor,correlationId:string,now=Date.now()):Promise<Record<string,unknown>>{
   const definition=toolMap.get(name);
   if(!definition)throw new ToolError('UNKNOWN_TOOL','Unknown tool.');
   const parsed=definition.input.safeParse(raw);
@@ -144,6 +145,15 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
   }
   captureRequirementHistory(original,doc,{source:name,actor:{id:actor.id,...(actor.clientName?{reportedClientName:actor.clientName}:{})}});
   }
-  definition.output.parse(result);
+  definition.coreOutput.parse(result);
   return store.commit(doc,args.expected_workspace_version,{key,project:doc.id,fingerprint,result,expiresAt:now+24*60*60*1000},now,unchanged);
+}
+
+// Guidance is response metadata, resolved on every project call (including
+// durable retries). Frozen payloads and original mutation receipts stay intact.
+export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,correlationId:string,now=Date.now()):Promise<Record<string,unknown>>{
+ const result=await callToolCore(store,name,raw,actor,correlationId,now);
+ const data=name==='list_projects'?result:{...result,...projectGuidance(await store.read(String(result.project_id)),name,raw as Record<string,unknown>,result)};
+ toolMap.get(name)!.output.parse(data);
+ return data;
 }

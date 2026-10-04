@@ -4,7 +4,8 @@ export type Repository = {id:string;name:string;url:string;branch:string};
 export type Baseline = {id:string;date:string;name:string;requirements:Requirement[];sections:Section[];requirementsVersion?:number;repositories?:Repository[]};
 export type ChangeProposal = {id:string;title:string;description:string;status:'Draft'|'Proposed'|'Applied'|'Rejected';createdAt:string;updatedAt:string;baseVersion:number;baseRequirements:Requirement[];baseSections:Section[];requirements:Requirement[];reviewNote?:string;appliedVersion?:number;appliedSnapshot?:string};
 export type Evidence = {id:string;date:string;baseline:string;artifactUrl:string;summary:string;checks:{id:string;title:string;passed:boolean;detail:string}[]};
-export type Activity = {id:string;date:string;message:string;projectId?:string;requirementIds?:string[];snapshotImplementation?:ImplementationCorrection;mcp?:{actorId:string;clientName?:string;tool:string;projectId:string;objectIds:string[];correlationId:string}};
+export type GuidanceOverrides = {requirements_writing_style?:'asd-ste100-inspired';writing_strength_percent?:number;record_snapshot_commit?:boolean;custom_instructions?:string};
+export type Activity = {agentGuidance?:{revision:number;actor:HistoryActor};id:string;date:string;message:string;projectId?:string;requirementIds?:string[];snapshotImplementation?:ImplementationCorrection;mcp?:{actorId:string;clientName?:string;tool:string;projectId:string;objectIds:string[];correlationId:string}};
 export type HistoryActor = {id:string|null;reportedClientName?:string};
 export type RequirementEvent = {
   id:string;projectId:string;requirementId:string;sequence:number;date:string;
@@ -18,4 +19,4 @@ export type RequirementRecord = {complete:boolean;events:RequirementEvent[]};
 export type ImplementationCommit = {commit_id:string;repository_id?:string;repository?:Repository;commit_url?:string};
 export type ImplementationCorrection = {id:string;project_id:string;baseline_id:string;date:string;actor:HistoryActor;before:ImplementationCommit|null;after:ImplementationCommit|null};
 export type SnapshotImplementation = {implementation_commit:ImplementationCommit|null;updated_at:string;actor:HistoryActor;history:ImplementationCorrection[]};
-export type Workspace = {id:string;prefix:string;name:string;sections:Section[];requirements:Requirement[];history:Activity[];baselines:Baseline[];evidence:Evidence[];version:number;nextSequence?:number;requirementsVersion?:number;repositories?:Repository[];proposals?:ChangeProposal[];requirementHistory?:Record<string,RequirementRecord>;snapshotImplementations?:Record<string,SnapshotImplementation>};
+export type Workspace = {agentGuidance?:{overrides:GuidanceOverrides;revision:number};id:string;prefix:string;name:string;sections:Section[];requirements:Requirement[];history:Activity[];baselines:Baseline[];evidence:Evidence[];version:number;nextSequence?:number;requirementsVersion?:number;repositories?:Repository[];proposals?:ChangeProposal[];requirementHistory?:Record<string,RequirementRecord>;snapshotImplementations?:Record<string,SnapshotImplementation>};

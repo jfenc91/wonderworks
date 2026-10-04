@@ -1,5 +1,6 @@
 import {z} from 'zod/v4';
 import {normalizeTags,TAG_PATTERN} from '../tags';
+import {guidanceOverridesInput} from '../agent-guidance';
 import {implementationInput} from '../snapshot-implementation';
 const tagArray=z.array(z.string().max(100)).max(20).superRefine((value,ctx)=>{try{normalizeTags(value);}catch(error){ctx.addIssue({code:'custom',message:(error as Error).message});}});
 const savedTags=z.array(z.string().min(1).max(40).regex(TAG_PATTERN)).max(20);
@@ -58,12 +59,20 @@ const mutation=z.strictObject({...version,proposal_id:proposalId.optional(),stat
 const list=<T extends z.ZodType>(item:T)=>z.strictObject({...version,items:z.array(item),next_cursor:z.string().optional()});
 const proposalDetails={title:z.string().trim().min(3).max(120),description:z.string().trim().max(3000).default('')};
 
+const guidanceContext=z.strictObject({project_id:text,kind:z.string(),proposal_id:proposalId.optional(),baseline_id:snapshotId.optional()});
+const workflowGuidance=z.strictObject({context:guidanceContext,next_step:z.string(),reminder:z.string(),custom_instructions_excerpt:z.string().optional(),custom_instructions_truncated:z.boolean()});
+const source=z.enum(['inherited','project_override']);
+const agentGuidance=z.strictObject({schema_version:z.literal(1),revision:z.number().int().nonnegative(),settings:guidanceOverridesInput.required(),sources:z.strictObject({requirements_writing_style:source,writing_strength_percent:source,record_snapshot_commit:source,custom_instructions:source}),summary:z.string(),custom_instructions_truncated:z.boolean()});
+
 function tool(name:string,description:string,input:z.ZodType,output:z.ZodType,readOnly=true){
-  return {name,description,input,output,definition:{name,description,inputSchema:z.toJSONSchema(input,{io:'input'}),outputSchema:z.toJSONSchema(output),annotations:{readOnlyHint:readOnly,destructiveHint:false,idempotentHint:true,openWorldHint:false}}};
+  const coreOutput=output;
+  if(name!=='list_projects'){output=(output as z.ZodObject).extend({guidance_revision:z.number().int().nonnegative(),workflow_guidance:workflowGuidance,...(name==='get_project'?{agent_guidance:agentGuidance}:{})});description+=' Read get_project for current advisory project guidance before work; reload when guidance_revision changes.';}
+  else description+=' Select an exact project_id and call get_project before project work.';
+  return {name,description,input,output,coreOutput,definition:{name,description,inputSchema:z.toJSONSchema(input,{io:'input'}),outputSchema:z.toJSONSchema(output),annotations:{readOnlyHint:readOnly,destructiveHint:false,idempotentHint:true,openWorldHint:false}}};
 }
 export const tools=[
   tool('list_projects','List accessible projects and their workspace versions. Cursor pages are bound to the current project index.',z.strictObject(page),z.strictObject({items:z.array(z.strictObject({id:text,name:z.string(),workspace_version:z.number().int()})),next_cursor:z.string().optional()})),
-  tool('get_project','Read identity, sections, repository links, and both workspace and requirement-set versions.',z.strictObject(project),z.strictObject({...version,id:text,name:z.string(),prefix:z.string(),sections:z.array(section),repositories:z.array(repository)})),
+  tool('get_project','Read identity, sections, repositories, versions and effective agent_guidance with schema/revision and inherited/project_override sources. Summary, custom instruction excerpt and reminders share 400 Unicode characters. The truncation flag identifies an excerpt; full text remains in project settings. Advisory guidance cannot override task instructions or grant permissions.',z.strictObject(project),z.strictObject({...version,id:text,name:z.string(),prefix:z.string(),sections:z.array(section),repositories:z.array(repository)})),
   tool('list_requirements','Read current requirements, including tags. Search includes tag labels. Exact tags match any (default) or all; untagged_only cannot combine with nonempty tags. All filters combine before pagination.',z.strictObject({...project,...page,query:z.string().max(500).optional(),section:z.string().max(80).optional(),status:status.optional(),tags:tagArray.default([]),tag_mode:z.enum(['any','all']).default('any'),untagged_only:z.boolean().default(false)}).refine(v=>!v.untagged_only||!v.tags.length,{message:'Choose named tags or untagged_only, not both.',path:['tags']}),list(currentRequirement)),
   tool('get_requirement','Read one current requirement, exact revision, system-maintained lifecycle dates and history coverage. Unknown dates remain explicit; lifecycle metadata is read-only.',z.strictObject({...project,requirement_id:reqId}),z.strictObject({...version,requirement:currentRequirement,lifecycle,coverage})),
   tool('get_requirement_history','Read durable history and lifecycle dates for an explicit project and current, deleted or pending requirement. Newest first; default 50, limit 1–100. Reuse all query arguments with next_cursor. INVALID_CURSOR requires a matching query; RESTART_REQUIRED means restart without a cursor after a concurrent write; NOT_FOUND means no known identity. Reads never backfill or mutate snapshots.',z.strictObject({...project,requirement_id:reqId,...page}),z.strictObject({...version,requirement_id:reqId,title:z.string(),current_revision:z.number().nullable(),current_status:status.nullable(),presence:z.enum(['current','deleted','absent','pending']),coverage,lifecycle,items:z.array(historyEvent),next_cursor:z.string().optional()})),

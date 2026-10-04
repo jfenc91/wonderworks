@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "proposal_id": "CP-007",
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "baseline_id": "BL-008",
+  "requirements_version": 8,
+  "verified_at": "2026-10-04T19:00:43.574Z",
+  "requirements": [
+    {
+      "id": "WW-036",
+      "revision": 2
+    },
+    {
+      "id": "WW-037",
+      "revision": 4
+    },
+    {
+      "id": "WW-072",
+      "revision": 1
+    },
+    {
+      "id": "WW-073",
+      "revision": 1
+    },
+    {
+      "id": "WW-074",
+      "revision": 1
+    },
+    {
+      "id": "WW-075",
+      "revision": 1
+    },
+    {
+      "id": "WW-076",
+      "revision": 1
+    }
+  ],
+  "summary": "BL-008 configurable AI guidance and snapshot commit reminders: 102 automated and 29 browser checks passed, with zero failures or skips. TypeScript and Worker build passed.",
+  "automated": {
+    "command": "node --import tsx --test test/*.test.mjs",
+    "passed": 102,
+    "failed": 0,
+    "skipped": 0
+  },
+  "browser": {
+    "commands": [
+      "WONDERWORKS_SECOND_URL=http://127.0.0.1:5180 node --test test/agent-guidance.browser.mjs test/proposal-authoring.browser.mjs test/workspace-sync.browser.mjs",
+      "node --test --test-name-pattern='finishing an already-running save' test/agent-guidance.browser.mjs"
+    ],
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "contexts": 2,
+    "separate_mcp_client": true,
+    "separate_worker_process": true,
+    "visible_update_ms": [
+      280,
+      784,
+      1284,
+      28,
+      1791,
+      1288
+    ]
+  },
+  "limitations": [
+    "Checks use disposable loopback projects and emulated local identity. Simulated access failures do not certify hosted OAuth expiry or revocation.",
+    "Publication is tracked by Sites separately; lifecycle statuses are unchanged."
+  ],
+  "checks": [
+    {
+      "id": "WW-036",
+      "title": "Publish explicit project-scoped MCP tool contracts",
+      "passed": true,
+      "detail": "All 18 MCP input/effect contracts remain compatible; project outputs validate guidance revision/context. Initialization and every project response fit a combined 400-code-point guidance budget."
+    },
+    {
+      "id": "WW-037",
+      "title": "Read current requirements and frozen implementation context through MCP",
+      "passed": true,
+      "detail": "Independent HTTP MCP tests read complete current/frozen context, current effective settings/sources, and exact implementation metadata without a browser session. Frozen requirement payloads are unchanged."
+    },
+    {
+      "id": "WW-072",
+      "title": "Configure project defaults for AI work",
+      "passed": true,
+      "detail": "Defaults derive without writes; strict overrides, Unicode limits, no-ops, revision/Activity atomicity, import isolation, stale writes and durable retries passed real D1 and HTTP tests."
+    },
+    {
+      "id": "WW-073",
+      "title": "Return current AI guidance and workflow reminders through MCP",
+      "passed": true,
+      "detail": "Every project tool and 399/400/401-character Unicode guidance boundaries passed; same-session and replayed mutation responses expose current guidance revisions without altering original mutation results."
+    },
+    {
+      "id": "WW-074",
+      "title": "Default AI requirement writing to a 60% STE-inspired style",
+      "passed": true,
+      "detail": "UI defaults, 0/60/100 strength behavior, inherited/override sources, full custom text, original example, official help, keyboard controls and compact layout passed."
+    },
+    {
+      "id": "WW-075",
+      "title": "Remind agents to record the implementation commit on the target snapshot",
+      "passed": true,
+      "detail": "An independent MCP client used a real temporary Git repository with two commits, recorded the actual final SHA on the exact first-included snapshot, read it back, and preserved a later unrelated snapshot. Disabled/default/manual and unknown-inclusion paths passed."
+    },
+    {
+      "id": "WW-076",
+      "title": "Verify configurable AI guidance and implementation reminders",
+      "passed": true,
+      "detail": "102 automated and 29 browser checks passed without failures or skips. TypeScript and Worker build passed. Browser checks cover live reconciliation, original-key retries, in-flight input, and explicit navigation approval."
+    }
+  ]
+}

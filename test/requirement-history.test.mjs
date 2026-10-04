@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {captureRequirementHistory,requirementHistory,requirementHistoryPage} from '../lib/requirement-history.ts';
 import {upsert,record,reconcileWorkspace,nextId} from '../lib/requirements.ts';
 import {createProposal,editProposalRequirement,deleteProposalRequirement,submitProposal,reviewProposal,rebaseProposal,snapshot,setContent} from '../lib/workflow.ts';
+import {projectGuidance} from '../lib/agent-guidance.ts';
 import {toolMap} from '../lib/mcp/contracts.ts';
 const input=(extra={})=>({section:'section',title:'Sample requirement',description:'The system shall preserve its exact history.',criteria:['The result is observable.'],priority:'High',status:'Draft',parameters:{},links:[],...extra});
 const workspace=()=>({id:'history-test',prefix:'HT',name:'History QA',version:0,requirementsVersion:1,sections:[{id:'section',title:'Behavior',description:''}],requirements:[],baselines:[],evidence:[],history:[],proposals:[],repositories:[]});
@@ -68,7 +69,7 @@ test('durability beyond Activity retention, pagination, concurrent changes, proj
   const saved=JSON.stringify(doc),restored=JSON.parse(saved);assert.equal(restored.history.length,500);assert.equal(requirementHistory(restored,'HT-001').items.length,105);
   const one=await requirementHistoryPage(restored,'HT-001');assert.equal(one.items.length,50);
   const two=await requirementHistoryPage(restored,'HT-001',{cursor:one.next_cursor});const three=await requirementHistoryPage(restored,'HT-001',{cursor:two.next_cursor});assert.equal(three.items.length,5);assert.equal(new Set([...one.items,...two.items,...three.items].map(e=>e.id)).size,105);assert.equal(one.items[0].sequence,105);
-  toolMap.get('get_requirement_history').output.parse(one);assert.equal(JSON.stringify(restored),saved);
+  toolMap.get('get_requirement_history').output.parse({...one,...projectGuidance(restored,'get_requirement_history',{},one)});assert.equal(JSON.stringify(restored),saved);
   await assert.rejects(()=>requirementHistoryPage({...restored,id:'another-project'},'HT-001',{cursor:one.next_cursor}),{code:'INVALID_CURSOR'});
   await assert.rejects(()=>requirementHistoryPage(restored,'HT-999'),{code:'NOT_FOUND'});
   for(const limit of [0,101,1.5])await assert.rejects(()=>requirementHistoryPage(restored,'HT-001',{limit}),{code:'VALIDATION_ERROR'});

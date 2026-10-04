@@ -2,6 +2,7 @@ import {acceptRequirements} from './fixtures/accepted-requirements.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {toolMap} from '../lib/mcp/contracts.ts';
+const withoutGuidance=({guidance_revision,workflow_guidance,...result})=>result;
 const origin=process.env.WONDERWORKS_TEST_URL??'http://127.0.0.1:5173';
 if(!['localhost','127.0.0.1'].includes(new URL(origin).hostname))throw Error('History tests require a loopback database.');
 async function rest(body,status=200){const r=await fetch(origin+'/api/workspace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();assert.equal(r.status,status,JSON.stringify(data));return data;}
@@ -18,7 +19,7 @@ test('REST, browser history reader and MCP share durable provenance with atomic 
   await accept({requirements:[input(),input({title:'Delete through proposal'})]});
   const id=doc.requirements[0].id,created=(await history(id)).lifecycle.created;
   await t.test('reads do not write and get_requirement exposes the same lifecycle',async()=>{
-    const before=structuredClone(doc),h=await history(id),m=await call('get_requirement_history',{project_id:doc.id,requirement_id:id});assert.deepEqual(h,m);assert.deepEqual((await call('get_requirement',{project_id:doc.id,requirement_id:id})).lifecycle,h.lifecycle);assert.deepEqual(await read(),before);
+    const before=structuredClone(doc),h=await history(id),m=await call('get_requirement_history',{project_id:doc.id,requirement_id:id});assert.deepEqual(h,withoutGuidance(m));assert.deepEqual((await call('get_requirement',{project_id:doc.id,requirement_id:id})).lifecycle,h.lifecycle);assert.deepEqual(await read(),before);
     assert.equal((await history('HQ-999',{},404)).error.code,'NOT_FOUND');await call('get_requirement_history',{project_id:doc.id,requirement_id:id,limit:101},'VALIDATION_ERROR');
   });
   await t.test('forged metadata is ignored; stale and rejected batches leave no event',async()=>{
@@ -45,7 +46,7 @@ test('REST, browser history reader and MCP share durable provenance with atomic 
     await accept({requirements:[{...doc.requirements[0],title:'Reviewed revision after acceptance'}]});
     const latest=await history(id);assert.equal(latest.lifecycle.last_change_accepted.revision,4);assert.equal(latest.lifecycle.last_changed.revision,4);assert.equal(JSON.stringify(doc.baselines.slice(1)),frozen);
     assert.equal((await history(id,{limit:'1',cursor:page.next_cursor},409)).error.code,'RESTART_REQUIRED');
-    assert.deepEqual(await call('get_requirement_history',{project_id:doc.id,requirement_id:'HQ-002'}),await history('HQ-002'));
+    assert.deepEqual(withoutGuidance(await call('get_requirement_history',{project_id:doc.id,requirement_id:'HQ-002'})),await history('HQ-002'));
   });
   await t.test('overlapping requirement IDs across projects are isolated',async()=>{
     const original=doc,second=await rest({action:'project',name:'CP-003 isolated history (local)',prefix:'HQ'});
