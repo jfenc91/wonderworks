@@ -1,3 +1,4 @@
+import {kindOf,normative,itemSearchText} from './item-content';
 import type {Requirement} from './types';
 
 export const MAX_TAGS = 20;
@@ -24,14 +25,15 @@ export function normalizeTags(value: unknown): string[] {
 
 export const tagsOf = (requirement: Pick<Requirement, 'tags'>) => normalizeTags(requirement.tags ?? []);
 export const withTags = (requirement: Requirement): Requirement & {tags: string[]} => ({...requirement, tags: tagsOf(requirement)});
-export type RequirementFilters = {query?: string; section?: string; status?: string; tags?: string[]; tag_mode?: 'any'|'all'; untagged_only?: boolean};
+export type RequirementFilters = {query?: string; kind?:'requirement'|'information'; section?: string; status?: string; tags?: string[]; tag_mode?: 'any'|'all'; untagged_only?: boolean};
 
 /** Shared by the reading surface and MCP, before pagination or counts. */
 export function matchesRequirement(requirement: Requirement, filters: RequirementFilters): boolean {
   const tags = tagsOf(requirement), selected = filters.tags ?? [];
   return (!filters.section || requirement.section === filters.section)
-    && (!filters.status || requirement.status === filters.status)
-    && (!filters.query || [requirement.id, requirement.title, requirement.description, ...requirement.criteria, ...tags].join(' ').toLowerCase().includes(filters.query.toLowerCase()))
+    && (!filters.kind || kindOf(requirement) === filters.kind)
+    && (!filters.status || normative(requirement)&&requirement.status === filters.status)
+    && (!filters.query || [itemSearchText(requirement), ...tags].join(' ').toLowerCase().includes(filters.query.toLowerCase()))
     && (!filters.untagged_only || tags.length === 0)
     && (!selected.length || (filters.tag_mode === 'all' ? selected.every(tag => tags.includes(tag)) : selected.some(tag => tags.includes(tag))));
 }

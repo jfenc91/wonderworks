@@ -1,9 +1,11 @@
+import {inheritRich,validateItem,validateReferences,initializeSourceReviews,validateReviewMarkers} from './item-content';
+import {validateDiagrams} from './diagrams';
 import {z} from 'zod';
 import {tagsOf,withTags} from './tags';
 import type {Workspace, Requirement, ChangeProposal, Repository} from './types';
 import {nextId, record, requirementInput, validateDependencies} from './requirements';
 
-export const requirementFields = ['section','title','description','criteria','priority','status','parameters','links','tags'] as const;
+export const requirementFields = ['section','title','description','criteria','priority','status','parameters','links','tags','kind','body_format','diagrams','summarizes','diagram_mappings'] as const;
 export function canonical(value:unknown):string {
   if (Array.isArray(value)) return '['+value.map(canonical).join(',')+']';
   if (value && typeof value==='object') return '{'+Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>JSON.stringify(k)+':'+canonical(v)).join(',')+'}';
@@ -67,10 +69,11 @@ function revised(requirement:Requirement,base?:Requirement):Requirement {
   return {...withTags(requirement),revision:base?(sameRequirement(base,requirement)?base.revision:base.revision+1):Math.max(1,requirement.revision)};
 }
 export function editProposalRequirement(doc:Workspace,id:unknown,input:unknown) {
-  const p=getProposal(doc,id,true),data=requirementInput.parse(input);
+  const p=getProposal(doc,id,true);let data=requirementInput.parse(input);
   if(!doc.sections.some(s=>s.id===data.section))throw Error('Choose an existing section');
   const existing=p.requirements.find(r=>r.id===data.id);
   if(data.id&&!existing)throw Error('Requirement is not in this proposal');
+  data=inheritRich(data,existing);validateItem(data);
   const requirementId=existing?.id??nextId(doc);
   const candidate=revised({...data,tags:data.tags??tagsOf(existing??{}),id:requirementId,revision:existing?.revision??1},p.baseRequirements.find(r=>r.id===requirementId));
   if(existing&&sameRequirement(existing,candidate))return;
@@ -97,17 +100,17 @@ export function restoreProposalRequirement(doc:Workspace,id:unknown,requirementI
 export function validateSet(doc:Workspace,requirements:Requirement[]) {
   if(new Set(requirements.map(r=>r.id)).size!==requirements.length)throw Error('Duplicate requirement IDs');
   for(const r of requirements){
-    requirementInput.parse(r);
+    requirementInput.parse(r);validateItem(r);
     if(!doc.sections.some(s=>s.id===r.section))throw Error(`${r.id}: choose an existing section`);
     if(r.links.some(id=>id===r.id||!requirements.some(other=>other.id===id)))throw Error(`${r.id}: remove missing or self-referencing dependencies`);
   }
-  validateDependencies({...doc,requirements});
+  validateReferences(requirements);validateDependencies({...doc,requirements});
 }
 export function submitProposal(doc:Workspace,id:unknown) {
   const p=getProposal(doc,id,true);
   if(isStale(doc,p))throw Error('Refresh this proposal from the latest requirement set before submitting');
   if(!requirementChanges(p.baseRequirements,p.requirements).length)throw Error('Stage at least one requirement change');
-  validateSet(doc,p.requirements);p.status='Proposed';p.updatedAt=new Date().toISOString();
+  initializeSourceReviews(p.requirements,p.baseRequirements);validateSet(doc,p.requirements);validateReviewMarkers(p.requirements,p.baseRequirements);validateDiagrams(p.requirements);p.status='Proposed';p.updatedAt=new Date().toISOString();
   record(doc,`${p.id} proposed for review · ${p.title}`);
 }
 export function rebaseProposal(doc:Workspace,id:unknown,input:unknown) {
@@ -140,7 +143,7 @@ export function reviewProposal(doc:Workspace,id:unknown,input:unknown) {
   if(decision.decision==='apply'){
     if(isStale(doc,p))throw Error('Requirements changed during review. Refresh the proposal and review it again before applying');
     if(!requirementChanges(doc.requirements,p.requirements).length)throw Error('This proposal has no changes to apply');
-    validateSet(doc,p.requirements);
+    validateSet(doc,p.requirements);validateReviewMarkers(p.requirements,p.baseRequirements);validateDiagrams(p.requirements);
     doc.requirements=structuredClone(p.requirements).map(r=>revised(r,doc.requirements.find(old=>old.id===r.id)));
     doc.requirementsVersion=setVersion(doc)+1;p.status='Applied';p.appliedVersion=setVersion(doc);
     p.appliedSnapshot=snapshot(doc,`${p.id} · ${p.title}`).id;

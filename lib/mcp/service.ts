@@ -1,3 +1,4 @@
+import {inheritRich,initializeSourceReviews} from '../item-content';
 import {projectGuidance} from '../agent-guidance';
 import {ZodError} from 'zod';
 import {normalizeTags,withTags,matchesRequirement} from '../tags';
@@ -36,18 +37,19 @@ async function paginate<T>(items:T[],args:Record<string,unknown>,scope:unknown,r
 }
 
 export function stage(doc:Workspace,proposalId:string,operations:any[]){
-  const p=getProposal(doc,proposalId,true),refs:Record<string,string>={};
+  const p=getProposal(doc,proposalId,true),before=structuredClone(p.requirements),refs:Record<string,string>={};
   // Allocate all new IDs first so forward references inside this atomic batch work.
   for(const op of operations)if(op.op==='add'){
     if(Object.hasOwn(refs,op.client_ref))throw new ToolError('VALIDATION_ERROR','Duplicate client_ref.',{client_ref:op.client_ref});
     Object.defineProperty(refs,op.client_ref,{value:nextId(doc),enumerable:true});
   }
   const links=(values:string[])=>values.map(id=>id.startsWith('$')?found(Object.hasOwn(refs,id.slice(1))?refs[id.slice(1)]:undefined,'Batch client_ref'):id);
-  for(const op of operations){
+  for(const original of operations){
+    const op={...original,requirement:original.requirement?{...original.requirement,...(original.requirement.summarizes?{summarizes:original.requirement.summarizes.map((s:any)=>({...s,requirement_id:links([s.requirement_id])[0]}))}:{}),...(original.requirement.diagram_mappings?{diagram_mappings:original.requirement.diagram_mappings.map((m:any)=>({...m,requirement_ids:links(m.requirement_ids)}))}:{})}:undefined};
     if(op.op==='add'){
       const data=requirementInput.parse({...op.requirement,links:links(op.requirement.links)});
       if(!doc.sections.some(s=>s.id===data.section))throw new ToolError('VALIDATION_ERROR','Choose an existing section.',{section:data.section});
-      p.requirements.push({...data,tags:data.tags??[],id:refs[op.client_ref],revision:1});
+      p.requirements.push({...inheritRich(data),tags:data.tags??[],id:refs[op.client_ref],revision:1});
     }else if(op.op==='edit')editProposalRequirement(doc,p.id,{...op.requirement,id:op.requirement_id,links:links(op.requirement.links)});
     else if(op.op==='delete')deleteProposalRequirement(doc,p.id,op.requirement_id);
     else {
@@ -55,7 +57,7 @@ export function stage(doc:Workspace,proposalId:string,operations:any[]){
       restoreProposalRequirement(doc,p.id,op.requirement_id);
     }
   }
-  validateSet(doc,p.requirements);p.updatedAt=new Date().toISOString();return refs;
+  initializeSourceReviews(p.requirements.filter(r=>!operations.some(op=>op.op==='restore'&&op.requirement_id===r.id)),before);validateSet(doc,p.requirements);p.updatedAt=new Date().toISOString();return refs;
 }
 
 async function callToolCore(store:Store,name:string,raw:unknown,actor:Actor,correlationId:string,now=Date.now()):Promise<Record<string,unknown>>{

@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "proposal_id": "CP-008",
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "baseline_id": "BL-009",
+  "requirements_version": 9,
+  "verified_at": "2026-10-04T19:34:41.191Z",
+  "requirements": [
+    {
+      "id": "WW-005",
+      "revision": 3
+    },
+    {
+      "id": "WW-009",
+      "revision": 4
+    },
+    {
+      "id": "WW-010",
+      "revision": 3
+    },
+    {
+      "id": "WW-014",
+      "revision": 2
+    },
+    {
+      "id": "WW-015",
+      "revision": 2
+    },
+    {
+      "id": "WW-021",
+      "revision": 3
+    },
+    {
+      "id": "WW-037",
+      "revision": 5
+    },
+    {
+      "id": "WW-038",
+      "revision": 3
+    },
+    {
+      "id": "WW-077",
+      "revision": 1
+    },
+    {
+      "id": "WW-078",
+      "revision": 1
+    },
+    {
+      "id": "WW-079",
+      "revision": 1
+    },
+    {
+      "id": "WW-080",
+      "revision": 1
+    },
+    {
+      "id": "WW-081",
+      "revision": 1
+    },
+    {
+      "id": "WW-082",
+      "revision": 1
+    },
+    {
+      "id": "WW-083",
+      "revision": 1
+    },
+    {
+      "id": "WW-084",
+      "revision": 1
+    },
+    {
+      "id": "WW-085",
+      "revision": 1
+    },
+    {
+      "id": "WW-086",
+      "revision": 1
+    },
+    {
+      "id": "WW-087",
+      "revision": 1
+    },
+    {
+      "id": "WW-088",
+      "revision": 1
+    }
+  ],
+  "summary": "BL-009 rich content, bounded local diagrams and linked Information: 126 automated checks and 37 combined browser checks passed, plus one built-Worker rendering check. TypeScript and Worker build passed.",
+  "automated": {
+    "command": "node --import tsx --test test/*.test.mjs",
+    "passed": 126,
+    "failed": 0,
+    "skipped": 0
+  },
+  "browser": {
+    "commands": [
+      "WONDERWORKS_SECOND_URL=http://127.0.0.1:5180 node --test test/rich-content.browser.mjs test/proposal-authoring.browser.mjs test/agent-guidance.browser.mjs test/workspace-sync.browser.mjs",
+      "WONDERWORKS_TEST_URL=http://127.0.0.1:5180 node --test --test-name-pattern='multiple Mermaid' test/rich-content.browser.mjs"
+    ],
+    "passed": 38,
+    "unique_checks": 37,
+    "failed": 0,
+    "skipped": 0,
+    "separate_mcp_client": true,
+    "separate_worker_process": true,
+    "visible_update_ms": [
+      28,
+      346,
+      1290,
+      32,
+      1798,
+      1291
+    ]
+  },
+  "renderers": {
+    "mermaid": "Wonderworks Mermaid core v1; documented finite subset with Dagre 3.1.1",
+    "dot": "@viz-js/viz 3.31.0; @ts-graphviz/ast 3.0.6",
+    "markdown": "Marked 17.0.6",
+    "sanitizer": "DOMPurify 3.4.16"
+  },
+  "limitations": [
+    "Mermaid supports the documented core subset, not every Mermaid extension. Unsupported source is preserved and reported by block; submission validates supported syntax and complexity.",
+    "Runtime renderer unavailability and timeouts retain source fallbacks. No source is sent to an external rendering service.",
+    "Checks use disposable loopback projects and emulated local identity. Hosted OAuth expiry/revocation is not certified by these checks.",
+    "Sites tracks publication separately. This release does not change lifecycle policy or fabricate verification."
+  ],
+  "checks": [
+    {
+      "id": "WW-005",
+      "title": "Author requirements with measurable acceptance criteria",
+      "passed": true,
+      "detail": "UI and MCP preserve exact body source, explicit formats, optional diagrams, normative criteria and proposal-only saves. A 50000-code-point emoji body survived HTTP staging; one extra character was rejected without a save."
+    },
+    {
+      "id": "WW-009",
+      "title": "Track meaningful requirement revisions",
+      "passed": true,
+      "detail": "Domain/API tests verified source-whitespace differences, all new fields, base-relative revisions, normalized no-ops, restoration, history and atomic reviewed Apply."
+    },
+    {
+      "id": "WW-010",
+      "title": "Delete requirements without breaking references",
+      "passed": true,
+      "detail": "Final-set tests reject target deletion while dependencies, Sources or mappings remain; atomic removal of a summary and source succeeds. Frozen/history records are retained."
+    },
+    {
+      "id": "WW-014",
+      "title": "Summarize project size and readiness",
+      "passed": true,
+      "detail": "Browser checks verified ten requirements plus one Information item leave readiness at 100%; normative counts are separate and evidence target validation excludes Information."
+    },
+    {
+      "id": "WW-015",
+      "title": "Maintain valid acyclic requirement dependencies",
+      "passed": true,
+      "detail": "Shared reference checks reject information dependency targets and preserve cycle checks. Sources/mappings do not become dependency edges."
+    },
+    {
+      "id": "WW-021",
+      "title": "Export the current specification for implementation",
+      "passed": true,
+      "detail": "Exports preserve exact body in safe fences, explicit kinds/formats, diagrams, alternatives, mappings, Sources revisions and freshness, with external-viewer guidance."
+    },
+    {
+      "id": "WW-037",
+      "title": "Read current requirements and frozen implementation context through MCP",
+      "passed": true,
+      "detail": "Independent authenticated MCP clients verified complete pagination, kinds, status/search filters, exact current/proposal/history/snapshot fields and immutable frozen reads."
+    },
+    {
+      "id": "WW-038",
+      "title": "Draft requirement changesets through MCP",
+      "passed": true,
+      "detail": "Both ten-source MCP batches resolve forward client references in Sources/mappings; invalid final references and stale writes persist no IDs or partial changes."
+    },
+    {
+      "id": "WW-077",
+      "title": "Store explicit content formats and preserve editable source",
+      "passed": true,
+      "detail": "All three formats preserve Unicode, whitespace, entities and fences. Unit and HTTP boundary checks enforce the shared 50000-code-point limit without trimming."
+    },
+    {
+      "id": "WW-078",
+      "title": "Edit source and render rich content consistently",
+      "passed": true,
+      "detail": "Browser tests verified Source/Preview, caret restoration, format switching, tables/emphasis/code, literal plain text, dirty live refresh, saved details, review and snapshots."
+    },
+    {
+      "id": "WW-079",
+      "title": "Author and render Mermaid and Graphviz diagrams",
+      "passed": true,
+      "detail": "Browser and built-Worker checks rendered flowchart, sequence and state fixtures plus directed, undirected and grouped DOT. Ordered blocks, alternatives, source and scale controls passed."
+    },
+    {
+      "id": "WW-080",
+      "title": "Contain unsafe content and recover from rendering failures",
+      "passed": true,
+      "detail": "HTML/SVG attack fixtures execute no code or external requests. Source survives unsupported syntax, unavailable workers, timeout and stale responses. Submission identifies item/block errors. SVG cache reuse is sanitized."
+    },
+    {
+      "id": "WW-081",
+      "title": "Add non-normative information elements to specifications",
+      "passed": true,
+      "detail": "UI and MCP create Information without normative placeholder criteria/parameters/dependencies. Ten-source navigation and separate counts/readiness/evidence targeting passed."
+    },
+    {
+      "id": "WW-082",
+      "title": "Link information elements to the requirements they summarize",
+      "passed": true,
+      "detail": "Ten source and reverse links navigate within proposal/current/frozen contexts. Structured mappings resolve batch references; duplicate/missing/wrong-kind targets and unresolved source removal are rejected."
+    },
+    {
+      "id": "WW-083",
+      "title": "Show when a summary needs review after source changes",
+      "passed": true,
+      "detail": "Changed sources produce Needs review without rewriting summaries; explicit proposed review advances markers. Final-revision validation and frozen old markers were verified."
+    },
+    {
+      "id": "WW-084",
+      "title": "Review rich content and information changes as versioned source",
+      "passed": true,
+      "detail": "Rich before/after renders and exact field diffs, history, whitespace revisions, restore and rebase conflicts passed. Real D1 rollback and restart retained source, references and receipts."
+    },
+    {
+      "id": "WW-085",
+      "title": "Find and inspect requirements and information by content",
+      "passed": true,
+      "detail": "Kind/search/status/tag combinations share one predicate. Browser source navigation, separate metrics, Information filtering and compact keyboard editing passed."
+    },
+    {
+      "id": "WW-086",
+      "title": "Preserve rich content and summary context in snapshots and exports",
+      "passed": true,
+      "detail": "Frozen JSON reads remain exact; legacy field absence survives import/export. Rich imports cannot silently clear fields. Markdown exports include exact source, labels and review context."
+    },
+    {
+      "id": "WW-087",
+      "title": "Read and stage rich content and information through MCP",
+      "passed": true,
+      "detail": "Separate browser-closed clients staged, read and submitted ten-source examples in both diagram languages, with exact source, complete pagination and field-preserving legacy edits."
+    },
+    {
+      "id": "WW-088",
+      "title": "Verify rich content and ten-requirement diagram summaries",
+      "passed": true,
+      "detail": "126 automated checks, 37 combined browser checks, and one built-Worker browser execution passed with no failures/skips. TypeScript and Worker build passed."
+    }
+  ]
+}

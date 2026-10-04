@@ -1,3 +1,4 @@
+import {normative} from './item-content';
 import {z} from 'zod';
 import type {Workspace} from './types';
 import {record} from './requirements';
@@ -13,7 +14,7 @@ export function recordEvidence(doc:Workspace,input:unknown){
   const evidence=evidenceInput.parse(input);
   const baseline=doc.baselines.find(b=>b.id===evidence.baseline);
   if(!baseline)throw Error('Baseline not found');
-  if(evidence.checks.some(c=>!baseline.requirements.some(r=>r.id===c.id)))throw Error('Every result must reference a requirement in its baseline');
+  if(evidence.checks.some(c=>!baseline.requirements.some(r=>r.id===c.id&&normative(r))))throw Error('Every result must reference a requirement in its baseline');
   const saved={...evidence,id:crypto.randomUUID(),date:new Date().toISOString()};
   doc.evidence.unshift(saved);
   record(doc,`Verification recorded for ${evidence.baseline} · ${evidence.checks.filter(c=>c.passed).length}/${evidence.checks.length} passed`);

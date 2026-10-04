@@ -1,3 +1,4 @@
+import {initializeSourceReviews} from '@/lib/item-content';
 import {readWorkspace,readWorkspaceVersion,saveWorkspace,listWorkspaces,createWorkspace} from '@/db/workspace';
 import {record,reconcileWorkspace} from '@/lib/requirements';
 import {saveRepository,createProposal,updateProposal,editProposalRequirement,deleteProposalRequirement,restoreProposalRequirement,submitProposal,rebaseProposal,reviewProposal,snapshot,setContent,setVersion,getProposal,validateSet} from '@/lib/workflow';
@@ -47,8 +48,8 @@ export async function POST(request:Request){
       }
       case 'proposal':createProposal(doc,input.proposal);break;
       case 'proposal_update':updateProposal(doc,input.id,input.proposal);break;
-      case 'proposal_requirement':editProposalRequirement(doc,input.id,input.requirement);validateSet(doc,getProposal(doc,input.id).requirements);break;
-      case 'proposal_delete':deleteProposalRequirement(doc,input.id,input.requirementId);validateSet(doc,getProposal(doc,input.id).requirements);break;
+      case 'proposal_requirement':editProposalRequirement(doc,input.id,input.requirement);initializeSourceReviews(getProposal(doc,input.id).requirements,original.proposals?.find(p=>p.id===input.id)?.requirements??[]);validateSet(doc,getProposal(doc,input.id).requirements);break;
+      case 'proposal_delete':deleteProposalRequirement(doc,input.id,input.requirementId);initializeSourceReviews(getProposal(doc,input.id).requirements,original.proposals?.find(p=>p.id===input.id)?.requirements??[]);validateSet(doc,getProposal(doc,input.id).requirements);break;
       case 'proposal_restore':restoreProposalRequirement(doc,input.id,input.requirementId);validateSet(doc,getProposal(doc,input.id).requirements);break;
       case 'proposal_submit':submitProposal(doc,input.id);break;
       case 'proposal_rebase':rebaseProposal(doc,input.id,input.resolutions);break;
@@ -64,7 +65,7 @@ export async function POST(request:Request){
         if(!input.proposal_id)throw Error('Choose an explicit Draft proposal_id. Requirement writes must be staged and reviewed before Apply.');
         const proposal=getProposal(doc,input.proposal_id,true);
         for(const r of input.requirements)editProposalRequirement(doc,proposal.id,r);
-        validateSet(doc,proposal.requirements);break;
+        initializeSourceReviews(proposal.requirements,original.proposals?.find(p=>p.id===input.proposal_id)?.requirements??[]);validateSet(doc,proposal.requirements);break;
       }
       case 'delete': {
         if(!input.proposal_id)throw Error('Choose an explicit Draft proposal_id to stage this deletion. Apply a reviewed proposal to change accepted requirements.');

@@ -1,4 +1,7 @@
-export type Requirement = { id:string; section:string; title:string; description:string; criteria:string[]; priority:'Critical'|'High'|'Medium'; status:'Draft'|'Approved'|'Implemented'; revision:number; parameters:Record<string,number|string|boolean>; links:string[]; tags?:string[] };
+export type DiagramBlock={id:string;language:"mermaid"|"dot";source:string;title:string;alt:string;position:number};
+export type SummarySource={requirement_id:string;reviewed_revision?:number};
+export type DiagramMapping={block_id:string;part:string;requirement_ids:string[]};
+export type Requirement = { kind?:"requirement"|"information";body_format?:"markdown"|"html"|"plain_text";diagrams?:DiagramBlock[];summarizes?:SummarySource[];diagram_mappings?:DiagramMapping[]; id:string; section:string; title:string; description:string; criteria:string[]; priority:'Critical'|'High'|'Medium'; status:'Draft'|'Approved'|'Implemented'; revision:number; parameters:Record<string,number|string|boolean>; links:string[]; tags?:string[] };
 export type Section = {id:string; title:string; description:string};
 export type Repository = {id:string;name:string;url:string;branch:string};
 export type Baseline = {id:string;date:string;name:string;requirements:Requirement[];sections:Section[];requirementsVersion?:number;repositories?:Repository[]};
