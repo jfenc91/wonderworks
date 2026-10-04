@@ -1,4 +1,5 @@
 import {ZodError} from 'zod';
+import {normalizeTags,withTags,matchesRequirement} from '../tags';
 import type {Workspace,ChangeProposal} from '../types';
 import {nextId,record,requirementInput} from '../requirements';
 import {recordEvidence} from '../evidence';
@@ -43,7 +44,7 @@ function stage(doc:Workspace,proposalId:string,operations:any[]){
     if(op.op==='add'){
       const data=requirementInput.parse({...op.requirement,links:links(op.requirement.links)});
       if(!doc.sections.some(s=>s.id===data.section))throw new ToolError('VALIDATION_ERROR','Choose an existing section.',{section:data.section});
-      p.requirements.push({...data,id:refs[op.client_ref],revision:1});
+      p.requirements.push({...data,tags:data.tags??[],id:refs[op.client_ref],revision:1});
     }else if(op.op==='edit')editProposalRequirement(doc,p.id,{...op.requirement,id:op.requirement_id,links:links(op.requirement.links)});
     else if(op.op==='delete')deleteProposalRequirement(doc,p.id,op.requirement_id);
     else {
@@ -60,6 +61,7 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
   const parsed=definition.input.safeParse(raw);
   if(!parsed.success)throw new ToolError('VALIDATION_ERROR','Invalid tool arguments.',{fields:parsed.error.issues.map(i=>({path:i.path.join('.'),message:i.message}))});
   const args=parsed.data as Record<string,any>;
+  if(name==='list_requirements')args.tags=normalizeTags(args.tags);
   if(name==='list_projects'){
     const projects=await store.list();
     return paginate(projects.map(p=>({id:p.id,name:p.name,workspace_version:p.version})),args,{name,actor:actor.id},projects);
@@ -69,12 +71,12 @@ export async function callTool(store:Store,name:string,raw:unknown,actor:Actor,c
     const v=versions(doc);
     switch(name){
       case 'get_project':return {...v,id:doc.id,name:doc.name,prefix:doc.prefix,sections:doc.sections,repositories:doc.repositories??[]};
-      case 'get_requirement':return {...v,requirement:found(doc.requirements.find(r=>r.id===args.requirement_id),'Requirement')};
+      case 'get_requirement':return {...v,requirement:withTags(found(doc.requirements.find(r=>r.id===args.requirement_id),'Requirement'))};
       case 'get_snapshot':return {...v,snapshot:found(doc.baselines.find(b=>b.id===args.baseline_id),'Snapshot')};
       case 'get_proposal':return {...v,proposal:inspect(doc,found(doc.proposals?.find(p=>p.id===args.proposal_id),'Proposal'))};
       default:{
         let items:unknown[]=[];
-        if(name==='list_requirements')items=doc.requirements.filter(r=>(!args.section||r.section===args.section)&&(!args.status||r.status===args.status)&&(!args.query||[r.id,r.title,r.description,...r.criteria].join(' ').toLowerCase().includes(args.query.toLowerCase())));
+        if(name==='list_requirements')items=doc.requirements.filter(r=>matchesRequirement(r,args)).map(withTags);
         if(name==='list_snapshots')items=doc.baselines.map(({requirements,sections,repositories,...meta})=>meta);
         if(name==='list_proposals')items=(doc.proposals??[]).map(p=>summary(doc,p));
         if(name==='list_evidence')items=doc.evidence.filter(e=>!args.baseline_id||e.baseline===args.baseline_id);

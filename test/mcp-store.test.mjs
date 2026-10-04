@@ -17,7 +17,7 @@ test('real D1 transactions roll back failed writes and receipts survive worker r
       const sql=await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8');
       for(const statement of sql.split('--> statement-breakpoint'))await db.prepare(statement).run();
     }
-    const doc={id:'project',name:'D1 fault QA',prefix:'DQ',version:0,requirementsVersion:1,sections:[],requirements:[],proposals:[],baselines:[],evidence:[],history:[]};
+    const doc={id:'project',name:'D1 fault QA',prefix:'DQ',version:0,requirementsVersion:1,sections:[{id:'section',title:'Tag behavior',description:''}],requirements:[{id:'DQ-001',section:'section',title:'Stored requirement',description:'Preserve atomic tag changes.',criteria:['Tags survive retries.'],priority:'High',status:'Draft',parameters:{},links:[],revision:1}],proposals:[],baselines:[],evidence:[],history:[]};
     await db.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,?)').bind(doc.id,JSON.stringify(doc),0).run();
     let store=new McpStore(db);
     const actor={id:'actor'},args={project_id:doc.id,expected_workspace_version:0,idempotency_key:'durable-retry-key',title:'Durable proposal',description:''};
@@ -45,6 +45,26 @@ test('real D1 transactions roll back failed writes and receipts survive worker r
       const next={...args,expected_workspace_version:1,idempotency_key:'concurrent-identical-key'};
       const results=await Promise.all([callTool(store,'create_proposal',next,actor,'concurrent-one'),callTool(store,'create_proposal',next,actor,'concurrent-two')]);
       assert.deepEqual(results[0],results[1]);const saved=await store.read(doc.id);assert.equal(saved.version,2);assert.equal(saved.proposals.length,2);assert.equal(saved.history.length,2);
+    });
+    const beforeTags=await store.read(doc.id);
+    const tagArgs={project_id:doc.id,expected_workspace_version:2,idempotency_key:'durable-tag-retry',proposal_id:'CP-002',operations:[{op:'edit',requirement_id:'DQ-001',requirement:{section:'section',title:'Stored requirement',description:'Preserve atomic tag changes.',criteria:['Tags survive retries.'],priority:'High',status:'Draft',parameters:{},links:[],tags:['mcp','reliability']}}]};
+    await t.test('failed durable tag staging preserves all content, IDs, receipts and successful activity',async()=>{
+      const receipts=(await db.prepare('SELECT COUNT(*) AS count FROM mcp_receipts').first()).count;
+      await db.prepare("CREATE TRIGGER fail_tags BEFORE UPDATE ON workspaces BEGIN SELECT RAISE(ABORT, 'injected tag save failure'); END").run();
+      await assert.rejects(()=>callTool(store,'stage_proposal_changes',tagArgs,actor,'failed-tags'));
+      assert.deepEqual(await store.read(doc.id),beforeTags);
+      assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM mcp_receipts').first()).count,receipts);
+      await db.prepare('DROP TRIGGER fail_tags').run();
+    });
+    const tagResult=await callTool(store,'stage_proposal_changes',tagArgs,actor,'saved-tags');
+    await mf.dispose();mf=start();db=await mf.getD1Database('DB');store=new McpStore(db);
+    await t.test('tag staging receipt survives worker replacement without duplicate activity',async()=>{
+      assert.deepEqual(await callTool(store,'stage_proposal_changes',tagArgs,actor,'retried-tags'),tagResult);
+      const after=await store.read(doc.id);
+      assert.equal(after.version,3);assert.equal(after.history.length,beforeTags.history.length+1);
+      assert.deepEqual(after.requirements,beforeTags.requirements);
+      assert.deepEqual(after.proposals.find(p=>p.id==='CP-002').requirements[0].tags,['mcp','reliability']);
+      assert.deepEqual(after.baselines,beforeTags.baselines);
     });
   }finally{await mf.dispose();await rm(directory,{recursive:true,force:true});}
 });

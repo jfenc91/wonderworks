@@ -90,3 +90,23 @@ npm run build
 ```
 
 Source: `app/page.tsx`, `app/api/workspace/route.ts`, `lib/requirements.ts`, `db/workspace.ts`. The frontend uses the bundled accessible UI primitives. Generated D1 migrations live in `drizzle/`.
+
+### Requirement tags (CP-002 / Wonderworks BL-003)
+
+Requirements can carry up to 20 aspect tags such as `mcp`, `security`, and `reliability`. Add or reuse labels in either requirement editor. Tag chips on cards and in the inspector open the corresponding filter. The Requirements view combines exact **Any tag**, **All tags**, or **Untagged** filtering with text, status, and section filters. Text search also matches tag labels. Inventory counts apply text/status/section before the tag restriction, and switching projects clears tag selections. Tags used only in an unapplied proposal stay out of the current set's inventory.
+
+Labels trim whitespace, lowercase ASCII letters, and turn internal whitespace into hyphens. Normalized labels contain 1–40 characters and match `[a-z0-9]+(?:-[a-z0-9]+)*`. Input is bounded to 20 entries of at most 100 raw characters each; invalid labels reject the entire save. Duplicates are removed and values sorted. Equivalent case, whitespace, duplicates, or order do not create a revision. Tags have no authorization meaning and are not assigned automatically.
+
+Tag edits are versioned requirement content. Proposals show **Tags** before/after differences, retain normal conflict resolution, and apply with exactly one set-version advance and snapshot. A tag-only revision follows the existing revision-specific evidence rules. Current Markdown exports and new snapshot JSON include tags; old snapshots and evidence remain exact historical records.
+
+Legacy records with no `tags` field behave as untagged without a migration or write on read. New and substantively edited requirements, new proposal copies, and new snapshots include explicit arrays. An omitted field on an edit preserves the current or staged tags; `tags: []` clears them. This applies to REST, browser tools and MCP. Reconciliation treats omitted tags and an empty set as equivalent for untagged current records but rejects omitted tags that would erase a nonempty set. Existing frozen records retain the original absence of the field.
+
+The existing MCP catalog remains at 15 tools. `list_requirements` additionally accepts `tags`, `tag_mode: "any" | "all"` (default `any`), and `untagged_only` (default `false`). Nonempty `tags` cannot combine with `untagged_only: true`. Filtering precedes pagination; cursors bind normalized tags and all query options. Current reads return tag arrays, while historical reads preserve stored field presence. `stage_proposal_changes` accepts optional tags on additions and edits, using the omission/clear behavior above and the existing atomic, idempotent write contract.
+
+Run the tagging and workflow checks against a loopback preview:
+
+```sh
+node --import tsx --test test/tagging.test.mjs test/tagging-api.test.mjs test/mcp-api.test.mjs test/mcp-store.test.mjs test/workflow-api.test.mjs
+```
+
+The checks cover normalization bounds, tag-only revisions/diffs, omitted fields, exact legacy snapshots, import validation, filter combinations and counts, UI/MCP filter parity, filter-bound cursors, proposal isolation and application, rebase conflicts, D1 rollback, and persisted retry receipts across worker replacement. Browser verification also exercises keyboard selection/removal, compact layouts, cancellation, validation feedback, reloads, and actual apply-and-snapshot review.

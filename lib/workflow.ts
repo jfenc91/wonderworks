@@ -1,8 +1,9 @@
 import {z} from 'zod';
+import {tagsOf,withTags} from './tags';
 import type {Workspace, Requirement, ChangeProposal, Repository} from './types';
 import {nextId, record, requirementInput, validateDependencies} from './requirements';
 
-export const requirementFields = ['section','title','description','criteria','priority','status','parameters','links'] as const;
+export const requirementFields = ['section','title','description','criteria','priority','status','parameters','links','tags'] as const;
 export function canonical(value:unknown):string {
   if (Array.isArray(value)) return '['+value.map(canonical).join(',')+']';
   if (value && typeof value==='object') return '{'+Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>JSON.stringify(k)+':'+canonical(v)).join(',')+'}';
@@ -10,16 +11,16 @@ export function canonical(value:unknown):string {
 }
 export function sameRequirement(a?:Requirement,b?:Requirement) {
   if (!a || !b) return a===b;
-  return requirementFields.every(field=>canonical(a[field])===canonical(b[field]));
+  return requirementFields.every(field=>canonical(field==='tags'?tagsOf(a):a[field])===canonical(field==='tags'?tagsOf(b):b[field]));
 }
 export function setVersion(doc:Workspace) { return doc.requirementsVersion ?? 1; }
-export function setContent(doc:Pick<Workspace,'requirements'|'sections'>) { return canonical({requirements:doc.requirements,sections:doc.sections}); }
+export function setContent(doc:Pick<Workspace,'requirements'|'sections'>) { return canonical({requirements:doc.requirements.map(withTags),sections:doc.sections}); }
 export function requirementChanges(before:Requirement[],after:Requirement[]) {
   const ids=[...new Set([...before.map(r=>r.id),...after.map(r=>r.id)])];
   return ids.flatMap(id=>{
     const old=before.find(r=>r.id===id),next=after.find(r=>r.id===id);
     if (sameRequirement(old,next)) return [];
-    return [{id,before:old,after:next,kind:!old?'Added':!next?'Deleted':'Edited',fields:requirementFields.filter(f=>canonical(old?.[f])!==canonical(next?.[f]))}];
+    return [{id,before:old,after:next,kind:!old?'Added':!next?'Deleted':'Edited',fields:requirementFields.filter(f=>canonical(f==='tags'&&old?tagsOf(old):old?.[f])!==canonical(f==='tags'&&next?tagsOf(next):next?.[f]))}];
   });
 }
 export function isStale(doc:Workspace,p:ChangeProposal) {
@@ -49,7 +50,7 @@ export function createProposal(doc:Workspace,input:unknown) {
   const data=proposalInput.parse(input);doc.proposals??=[];
   const sequence=doc.proposals.reduce((n,p)=>Math.max(n,Number(p.id.split('-')[1])||0),0)+1;
   const now=new Date().toISOString();
-  const p:ChangeProposal={...data,id:`CP-${String(sequence).padStart(3,'0')}`,status:'Draft',createdAt:now,updatedAt:now,baseVersion:setVersion(doc),baseRequirements:structuredClone(doc.requirements),baseSections:structuredClone(doc.sections),requirements:structuredClone(doc.requirements)};
+  const p:ChangeProposal={...data,id:`CP-${String(sequence).padStart(3,'0')}`,status:'Draft',createdAt:now,updatedAt:now,baseVersion:setVersion(doc),baseRequirements:structuredClone(doc.requirements).map(withTags),baseSections:structuredClone(doc.sections),requirements:structuredClone(doc.requirements).map(withTags)};
   doc.proposals.unshift(p);record(doc,`${p.id} drafted · ${p.title}`);return p;
 }
 export function getProposal(doc:Workspace,id:unknown,editable=false) {
@@ -63,7 +64,7 @@ export function updateProposal(doc:Workspace,id:unknown,input:unknown) {
   record(doc,`${p.id} details updated`);
 }
 function revised(requirement:Requirement,base?:Requirement):Requirement {
-  return {...requirement,revision:base?(sameRequirement(base,requirement)?base.revision:base.revision+1):Math.max(1,requirement.revision)};
+  return {...withTags(requirement),revision:base?(sameRequirement(base,requirement)?base.revision:base.revision+1):Math.max(1,requirement.revision)};
 }
 export function editProposalRequirement(doc:Workspace,id:unknown,input:unknown) {
   const p=getProposal(doc,id,true),data=requirementInput.parse(input);
@@ -71,7 +72,8 @@ export function editProposalRequirement(doc:Workspace,id:unknown,input:unknown) 
   const existing=p.requirements.find(r=>r.id===data.id);
   if(data.id&&!existing)throw Error('Requirement is not in this proposal');
   const requirementId=existing?.id??nextId(doc);
-  const candidate=revised({...data,id:requirementId,revision:existing?.revision??1},p.baseRequirements.find(r=>r.id===requirementId));
+  const candidate=revised({...data,tags:data.tags??tagsOf(existing??{}),id:requirementId,revision:existing?.revision??1},p.baseRequirements.find(r=>r.id===requirementId));
+  if(existing&&sameRequirement(existing,candidate))return;
   if(existing)p.requirements[p.requirements.indexOf(existing)]=candidate;else p.requirements.push(candidate);
   p.updatedAt=new Date().toISOString();record(doc,`${p.id} staged ${requirementId} · ${candidate.title}`);
 }
@@ -120,14 +122,14 @@ export function rebaseProposal(doc:Workspace,id:unknown,input:unknown) {
     return picked?[revised(structuredClone(picked),latest)]:[];
   });
   validateSet(doc,requirements);
-  p.requirements=requirements;p.baseRequirements=structuredClone(doc.requirements);p.baseSections=structuredClone(doc.sections);
+  p.requirements=requirements;p.baseRequirements=structuredClone(doc.requirements).map(withTags);p.baseSections=structuredClone(doc.sections);
   p.baseVersion=setVersion(doc);p.status='Draft';p.updatedAt=new Date().toISOString();
   record(doc,`${p.id} refreshed onto requirement set v${p.baseVersion}; review required`);
 }
 export function snapshot(doc:Workspace,name:unknown) {
   const title=z.string().trim().min(2).max(160).parse(name);
   const sequence=doc.baselines.reduce((n,b)=>Math.max(n,Number(b.id.split('-')[1])||0),0)+1;
-  const b={id:`BL-${String(sequence).padStart(3,'0')}`,date:new Date().toISOString(),name:title,requirementsVersion:setVersion(doc),requirements:structuredClone(doc.requirements),sections:structuredClone(doc.sections),repositories:structuredClone(doc.repositories??[])};
+  const b={id:`BL-${String(sequence).padStart(3,'0')}`,date:new Date().toISOString(),name:title,requirementsVersion:setVersion(doc),requirements:structuredClone(doc.requirements).map(withTags),sections:structuredClone(doc.sections),repositories:structuredClone(doc.repositories??[])};
   doc.baselines.unshift(b);record(doc,`${b.id} snapshotted requirement set v${b.requirementsVersion} · ${title}`);return b;
 }
 export function reviewProposal(doc:Workspace,id:unknown,input:unknown) {

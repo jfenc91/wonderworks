@@ -1,6 +1,8 @@
 'use client';
 
-import {useState} from 'react';
+import {useState,useRef} from 'react';
+import {TagBadges,TagEditor,type TagEditorHandle} from '@/components/requirement-tags';
+import {tagsOf,tagInventory} from '@/lib/tags';
 import {GitBranch,GitPullRequest,Plus,Pencil,ExternalLink,Layers,Download,Check,Trash2,RotateCcw,ArrowLeft} from 'lucide-react';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {Sheet,SheetContent,SheetTitle,SheetDescription} from '@/components/ui/sheet';
@@ -34,10 +36,10 @@ export function RepositoryPanel({doc,mutate,busy}:Props){
   </div>;
 }
 
-const labels:Record<string,string>={section:'Section',title:'Title',description:'Description',criteria:'Acceptance criteria',priority:'Priority',status:'Status',parameters:'Parameters',links:'Dependencies'};
+const labels:Record<string,string>={section:'Section',title:'Title',description:'Description',criteria:'Acceptance criteria',priority:'Priority',status:'Status',parameters:'Parameters',links:'Dependencies',tags:'Tags'};
 function FieldValue({field,requirement,sections}:{field:typeof requirementFields[number];requirement?:Requirement;sections:Section[]}){
   if(!requirement)return <span className="diff-empty">Not present</span>;
-  const value=requirement[field];
+  const value=field==='tags'?tagsOf(requirement):requirement[field];
   if(field==='section')return <>{sections.find(s=>s.id===value)?.title??String(value)}</>;
   if(Array.isArray(value))return value.length?<ul>{value.map((item,i)=><li key={i}>{item}</li>)}</ul>:<span className="diff-empty">None</span>;
   if(typeof value==='object')return Object.keys(value).length?<pre>{JSON.stringify(value,null,2)}</pre>:<span className="diff-empty">None</span>;
@@ -45,7 +47,7 @@ function FieldValue({field,requirement,sections}:{field:typeof requirementFields
 }
 function RequirementReadOnly({requirement,sections}:{requirement?:Requirement;sections:Section[]}){
   if(!requirement)return <p className="diff-empty">Requirement removed</p>;
-  return <div className="readonly-requirement"><h4>{requirement.title}</h4><p>{requirement.description}</p><div className="workflow-meta">{sections.find(s=>s.id===requirement.section)?.title??requirement.section} · {requirement.priority} · {requirement.status} · r{requirement.revision}</div><ol>{requirement.criteria.map((c,i)=><li key={i}>{c}</li>)}</ol>{Object.keys(requirement.parameters).length>0&&<pre>{JSON.stringify(requirement.parameters,null,2)}</pre>}{requirement.links.length>0&&<p>Depends on {requirement.links.join(', ')}</p>}</div>;
+  return <div className="readonly-requirement"><h4>{requirement.title}</h4><p>{requirement.description}</p><div className="workflow-meta">{sections.find(s=>s.id===requirement.section)?.title??requirement.section} · {requirement.priority} · {requirement.status} · r{requirement.revision}</div><TagBadges tags={requirement.tags}/><ol>{requirement.criteria.map((c,i)=><li key={i}>{c}</li>)}</ol>{Object.keys(requirement.parameters).length>0&&<pre>{JSON.stringify(requirement.parameters,null,2)}</pre>}{requirement.links.length>0&&<p>Depends on {requirement.links.join(', ')}</p>}</div>;
 }
 
 export function SnapshotPanel({doc,mutate,busy}:Props){
@@ -61,13 +63,15 @@ export function SnapshotPanel({doc,mutate,busy}:Props){
 }
 
 function ProposalRequirementEditor({doc,proposal,initial,mutate,busy,onClose}:Props&{proposal:ChangeProposal;initial:Partial<Requirement>;onClose:()=>void}){
+  const tagEditorRef=useRef<TagEditorHandle>(null);
   const [draft,setDraft]=useState(initial),[criteria,setCriteria]=useState(initial.criteria?.join('\n')??''),[parameters,setParameters]=useState(JSON.stringify(initial.parameters??{},null,2)),[links,setLinks]=useState(initial.links?.join(', ')??''),[error,setError]=useState('');
-  return <Sheet open onOpenChange={open=>{if(!open)onClose();}}><SheetContent className="requirement-editor"><SheetTitle>{draft.id?`Propose edit to ${draft.id}`:'Propose a new requirement'}</SheetTitle><SheetDescription>Save this change to {proposal.id}. The latest requirement set stays unchanged until the proposal is applied.</SheetDescription><form className="editor-form" onSubmit={async e=>{e.preventDefault();try{const values=JSON.parse(parameters);if(!values||Array.isArray(values)||typeof values!=='object')throw Error('Parameters must be a JSON object');await mutate('proposal_requirement',{id:proposal.id,requirement:{...draft,criteria:criteria.split('\n').map(s=>s.trim()).filter(Boolean),parameters:values,links:links.split(',').map(s=>s.trim()).filter(Boolean)}});onClose();}catch(e){setError(message(e));}}}>
+  return <Sheet open onOpenChange={open=>{if(!open)onClose();}}><SheetContent className="requirement-editor"><SheetTitle>{draft.id?`Propose edit to ${draft.id}`:'Propose a new requirement'}</SheetTitle><SheetDescription>Save this change to {proposal.id}. The latest requirement set stays unchanged until the proposal is applied.</SheetDescription><form className="editor-form" onSubmit={async e=>{e.preventDefault();try{const values=JSON.parse(parameters);if(!values||Array.isArray(values)||typeof values!=='object')throw Error('Parameters must be a JSON object');await mutate('proposal_requirement',{id:proposal.id,requirement:{...draft,tags:tagEditorRef.current?.readTags()??tagsOf(draft),criteria:criteria.split('\n').map(s=>s.trim()).filter(Boolean),parameters:values,links:links.split(',').map(s=>s.trim()).filter(Boolean)}});onClose();}catch(e){setError(message(e));}}}>
     <label>Title<input required minLength={3} maxLength={120} value={draft.title??''} onChange={e=>setDraft({...draft,title:e.target.value})}/></label>
     <label>Section<SelectField label="Proposed requirement section" value={draft.section??''} onChange={section=>setDraft({...draft,section})} options={doc.sections.map(s=>({value:s.id,label:s.title}))}/></label>
     <div className="form-grid"><label>Priority<SelectField label="Proposed priority" value={draft.priority??'High'} onChange={priority=>setDraft({...draft,priority:priority as Requirement['priority']})} options={['Critical','High','Medium'].map(value=>({value,label:value}))}/></label><label>Status<SelectField label="Proposed status" value={draft.status??'Draft'} onChange={status=>setDraft({...draft,status:status as Requirement['status']})} options={['Draft','Approved','Implemented'].map(value=>({value,label:value}))}/></label></div>
     <label>Description<textarea required minLength={10} maxLength={4000} rows={5} value={draft.description??''} onChange={e=>setDraft({...draft,description:e.target.value})}/></label>
     <label>Acceptance criteria<span className="field-hint">One measurable outcome per line</span><textarea required rows={5} value={criteria} onChange={e=>setCriteria(e.target.value)}/></label>
+    <TagEditor ref={tagEditorRef} value={tagsOf(draft)} suggestions={tagInventory(proposal.requirements).map(i=>i.tag)} onChange={tags=>setDraft({...draft,tags})}/>
     <label>Dependencies<input value={links} onChange={e=>setLinks(e.target.value)} placeholder={`${doc.prefix}-001, ${doc.prefix}-002`}/><span className="field-hint">Reference requirements retained or added in this proposal.</span></label>
     <details><summary>Specified parameters</summary><textarea aria-label="Proposed requirement parameters JSON" className="code-input" rows={5} value={parameters} onChange={e=>setParameters(e.target.value)}/></details>
     {error&&<p className="error-box" role="alert">{error}</p>}<div className="editor-actions"><button className="ghost" type="button" onClick={onClose}>Cancel</button><button className="primary" disabled={busy}>Save to proposal</button></div>
