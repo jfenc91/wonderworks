@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "proposal_id": "CP-015",
+  "baseline_id": "BL-016",
+  "requirements_version": 16,
+  "verified_at": "2026-10-05T17:25:26.990Z",
+  "requirements": [
+    {
+      "id": "WW-003",
+      "revision": 3
+    },
+    {
+      "id": "WW-026",
+      "revision": 4
+    },
+    {
+      "id": "WW-119",
+      "revision": 2
+    },
+    {
+      "id": "WW-125",
+      "revision": 2
+    },
+    {
+      "id": "WW-127",
+      "revision": 1
+    },
+    {
+      "id": "WW-128",
+      "revision": 1
+    },
+    {
+      "id": "WW-129",
+      "revision": 1
+    },
+    {
+      "id": "WW-130",
+      "revision": 1
+    }
+  ],
+  "summary": "Workspace deletion implemented with atomic storage, durable deleted-ID reservations, safe confirmation and client recovery. Verification uses only disposable data.",
+  "checks": [
+    {
+      "id": "WW-003",
+      "title": "Switch between project workspaces",
+      "revision": 3,
+      "passed": true,
+      "detail": "r3: Deleted active projects open workspace selection; inactive deletion updates the selector while preserving the active editor. Last-project reload offers working create and archive import."
+    },
+    {
+      "id": "WW-026",
+      "title": "Persist project data in durable workspace storage",
+      "revision": 4,
+      "passed": true,
+      "detail": "r4: Atomic deletion and durable ID reservations persist through SQLite, D1 and PostgreSQL restarts. Deleted Asteroids seed data remains absent on index reads and initialization."
+    },
+    {
+      "id": "WW-119",
+      "title": "Back up and transfer complete deployment data",
+      "revision": 2,
+      "passed": true,
+      "detail": "r2: Administrative archives preserve minimal deletion records and same-actor retry results in every source/destination pair among SQLite, D1 and PostgreSQL. Deletion-only installations also restore without seed resurrection."
+    },
+    {
+      "id": "WW-125",
+      "title": "Preview and atomically import complete workspace archives",
+      "revision": 2,
+      "passed": true,
+      "detail": "r2: Deleted original IDs appear as reserved conflicts; restore is rejected and explicit copy creates a new ID with source provenance. Retrying an old import cannot resurrect a deleted destination."
+    },
+    {
+      "id": "WW-127",
+      "title": "Confirm deletion of a project workspace",
+      "revision": 1,
+      "passed": true,
+      "detail": "r1: Browser checks exercise duplicate names, exact-name gating, initial Cancel focus, cancellation, export success/failure, invalidation after a concurrent save, explicit local-input discard, pending confirmation and narrow-screen layout."
+    },
+    {
+      "id": "WW-128",
+      "title": "Delete workspace data atomically and prevent recreation",
+      "revision": 1,
+      "passed": true,
+      "detail": "r1: All three databases pass populated deletion, cross-project isolation, commit rollback injection, concurrent deletion replay, stale-write rejection and restart retry. Independent PostgreSQL processes race REST/MCP saves against deletion. Authorization, forged identity boundaries, Origin and input validation are checked."
+    },
+    {
+      "id": "WW-129",
+      "title": "Recover navigation and editors after workspace deletion",
+      "revision": 1,
+      "passed": true,
+      "detail": "r1: Two browser sessions detect deletion within five seconds and preserve remote pending input for explicit copying/discard. Deleted URLs and empty states recover without retargeting; sync tests reject late responses and stop deleted-project requests."
+    },
+    {
+      "id": "WW-130",
+      "title": "Verify workspace deletion across supported deployments",
+      "revision": 1,
+      "passed": true,
+      "detail": "r1: Disposable SQLite, Miniflare D1 and real PostgreSQL storage checks; separate production server processes; Chrome two-session UI checks; fault injection and a nine-pair backup transfer matrix passed. Exact execution scope and limits are listed below."
+    }
+  ],
+  "executions": [
+    {
+      "suite": "test/workspace-deletion.test.mjs",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "SQLite, Miniflare D1, PostgreSQL 17; populated records include Information, all proposal states, frozen snapshots, passing/failed evidence, history, guidance and implementation associations. All nine backup source/destination pairs verified."
+    },
+    {
+      "suite": "test/portability.test.mjs + test/*store.test.mjs + test/workspace-records.test.mjs + test/workspace-codec.test.mjs + test/workspace-sync.test.mjs",
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "test/standalone-process.test.mjs",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Built production SQLite and separate PostgreSQL server processes; REST/MCP delete-versus-save races, retry, restart, authentication/revocation."
+    },
+    {
+      "suite": "test/workspace-deletion.browser.mjs",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Chrome on macOS against built standalone SQLite; two browser sessions; 1280x720 and 390x844 views."
+    },
+    {
+      "suite": "TypeScript --noEmit and targeted ESLint",
+      "result": "passed"
+    },
+    {
+      "suite": "Standalone production build",
+      "result": "passed"
+    }
+  ],
+  "limits": [
+    "D1 storage tests use Miniflare's D1 implementation; production customer workspaces were not deleted for testing.",
+    "Browser deletion workflow was exercised against standalone SQLite. PostgreSQL HTTP checks use independent server processes; D1 and PostgreSQL storage contracts are covered separately.",
+    "Sites build, deployment status and final source commit are recorded with BL-016 implementation and evidence metadata after publishing."
+  ]
+}

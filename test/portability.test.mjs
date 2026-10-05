@@ -35,7 +35,7 @@ test('missing/newer schemas and SQLite contention fail safely and recover withou
   await assert.rejects(()=>readiness(first));await migrate(first);
   const other=await openDatabase({profile:'local',sqlitePath:path});databases.push(other);await first.exec('BEGIN IMMEDIATE');
   try{await assert.rejects(()=>other.prepare('SELECT id FROM workspaces').all(),e=>e.retryable===true);}finally{await first.exec('ROLLBACK');}
-  await readiness(other);await first.prepare('INSERT INTO wonderworks_schema(version) VALUES(5)').run();await assert.rejects(()=>migrate(first),/newer/);await assert.rejects(()=>readiness(first),/incompatible/);
+  await readiness(other);await first.prepare('INSERT INTO wonderworks_schema(version) VALUES(999)').run();await assert.rejects(()=>migrate(first),/newer/);await assert.rejects(()=>readiness(first),/incompatible/);
   await assert.rejects(()=>openDatabase({profile:'local',sqlitePath:'/dev/null/workspace.sqlite'},{create:true}));
 });
 
@@ -112,7 +112,7 @@ test('SQLite repeatable migration, restart replay, stale writes, atomic rollback
 
 test('D1 ↔ SQLite complete transfer preserves frozen history and retry scope',async()=>{
   const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("test")}}',compatibilityDate:'2026-05-15',d1Databases:{DB:'portable-d1'}});
-  try{const d1=await mf.getD1Database('DB');for(const f of ['0000_graceful_terror','0001_lowly_talos','0002_clammy_wasp','0003_workspace_portability'])for(const sql of (await readFile(new URL('../drizzle/'+f+'.sql',import.meta.url),'utf8')).split('--> statement-breakpoint'))await d1.prepare(sql).run();
+  try{const d1=await mf.getD1Database('DB');for(const f of ['0000_graceful_terror','0001_lowly_talos','0002_clammy_wasp','0003_workspace_portability','0004_workspace_deletion'])for(const sql of (await readFile(new URL('../drizzle/'+f+'.sql',import.meta.url),'utf8')).split('--> statement-breakpoint'))await d1.prepare(sql).run();
     const doc=workspace('d1-source-'+crypto.randomUUID());apply(doc);await d1.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,?)').bind(doc.id,JSON.stringify(doc),doc.version).run();
     const args={project_id:doc.id,expected_workspace_version:doc.version,idempotency_key:'d1-transfer-receipt',title:'Cross-backend retry receipt',description:''},actor={id:'cross-backend-actor'};
     const receipt=await callTool(new McpStore(d1),'create_proposal',args,actor,'before-transfer');

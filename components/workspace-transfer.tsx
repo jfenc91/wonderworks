@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {Archive,Download,Upload,FileArchive,CheckCircle2,LoaderCircle} from 'lucide-react';
 import {validateArchiveDownload} from '@/lib/archive-download.mjs';
-type Preview={archive_id:string;fingerprint:string;projects:{id:string;name:string;version:number;items:number;proposals:number;snapshots:number;history_events:number;conflict:boolean}[];warnings:string[]};
+type Preview={archive_id:string;fingerprint:string;projects:{id:string;name:string;version:number;items:number;proposals:number;snapshots:number;history_events:number;conflict:boolean;deleted?:boolean}[];warnings:string[]};
 const pendingImportKey='wonderworks.pending-import.v1';
 export function WorkspaceTransfer({project,onOpenProject}:{project:string;onOpenProject:(id:string)=>void}){
   const [scope,setScope]=useState('current'),[file,setFile]=useState<File|null>(null),[preview,setPreview]=useState<Preview|null>(null),[modes,setModes]=useState<Record<string,string>>({}),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(''),[result,setResult]=useState<{id:string;name:string}[]>([]),[download,setDownload]=useState('');
@@ -46,8 +46,8 @@ export function WorkspaceTransfer({project,onOpenProject}:{project:string;onOpen
       <section className="transfer-action" aria-labelledby="workspace-export-title">
         <div className="transfer-action-title"><Download size={19} aria-hidden="true"/><h4 id="workspace-export-title">Export workspace</h4></div>
         <p>Download saved requirements, open proposals, snapshots and history.</p>
-        <label className="settings-field">Export scope<select aria-label="Export workspace scope" disabled={busy} value={scope} onChange={e=>setScope(e.target.value)}><option value="current">Current project</option><option value="all">All accessible projects</option></select></label>
-        <div className="transfer-actions"><button className="primary" disabled={busy} onClick={()=>void run('export')}><Download size={16} aria-hidden="true"/>Export workspace</button>{download&&<a className="transfer-download" href={download} download="wonderworks-workspaces.wwspace">Download archive again</a>}</div>
+        <label className="settings-field">Export scope<select aria-label="Export workspace scope" disabled={busy} value={scope} onChange={e=>setScope(e.target.value)}><option value="current" disabled={!project}>Current project</option><option value="all">All accessible projects</option></select></label>
+        <div className="transfer-actions"><button className="primary" disabled={busy||(!project&&scope!=='all')} onClick={()=>void run('export')}><Download size={16} aria-hidden="true"/>Export workspace</button>{download&&<a className="transfer-download" href={download} download="wonderworks-workspaces.wwspace">Download archive again</a>}</div>
         <p className="transfer-note">Save any pending edits before exporting.</p>
       </section>
       <section className="transfer-action" aria-labelledby="workspace-import-title">
@@ -62,7 +62,7 @@ export function WorkspaceTransfer({project,onOpenProject}:{project:string;onOpen
       <div className="archive-preview-heading"><div><h4 id="archive-preview-title">Choose projects to import</h4><p>Restore an available ID, create a separate copy, or skip a project.</p></div><span className="settings-badge">{preview.projects.length} {preview.projects.length===1?'project':'projects'}</span></div>
       {!!preview.warnings.length&&<ul className="archive-warnings">{preview.warnings.map(w=><li key={w}>{w}</li>)}</ul>}
       <div className="archive-project-list">{preview.projects.map(p=><article className="archive-project" key={p.id}>
-        <div className="archive-project-info"><strong>{p.name}</strong><p>{p.items} items · {p.proposals} proposals · {p.snapshots} snapshots · {p.history_events} history events</p><span className={'archive-conflict'+(p.conflict?' is-conflict':'')}>{p.conflict?'This ID already exists. Import a copy or skip.':'This ID is available for exact restore.'}</span><details><summary>Project details</summary><p>{p.id} · workspace v{p.version}</p></details></div>
+        <div className="archive-project-info"><strong>{p.name}</strong><p>{p.items} items · {p.proposals} proposals · {p.snapshots} snapshots · {p.history_events} history events</p><span className={'archive-conflict'+(p.conflict?' is-conflict':'')}>{p.deleted?'This ID is reserved after deletion. Import a copy or skip.':p.conflict?'This ID already exists. Import a copy or skip.':'This ID is available for exact restore.'}</span><details><summary>Project details</summary><p>{p.id} · workspace v{p.version}</p></details></div>
         <label className="settings-field">Import as<select aria-label={'Import mode for '+p.name} disabled={busy||uncertain} value={modes[p.id]} onChange={e=>{setModes({...modes,[p.id]:e.target.value});operation.current='';}}><option value="skip">Skip</option>{!p.conflict&&<option value="restore">Restore original ID</option>}<option value="copy">Import as a separate copy</option></select></label>
       </article>)}</div>
       <div className="archive-confirm"><span>{Object.values(modes).filter(mode=>mode!=='skip').length} selected</span><button className="primary" disabled={busy||!!result.length||!Object.values(modes).some(mode=>mode!=='skip')} onClick={()=>void run('import')}>{uncertain?'Retry same import':'Confirm selected imports'}</button></div>

@@ -49,7 +49,7 @@ export async function openDatabase(config,{create=false}={}){
   return owner;
 }
 
-export const SCHEMA_VERSION=4;
+export const SCHEMA_VERSION=5;
 export async function migrate(db){
   // DDL and migration marker commit together; advisory/SQLite write locks also
   // serialize competing installers. Existing v0–v3 tables are upgraded in place.
@@ -66,6 +66,7 @@ export async function migrate(db){
     'CREATE TABLE IF NOT EXISTS workspace_storage_versions(project TEXT NOT NULL,version INTEGER NOT NULL,data TEXT NOT NULL,sha256 TEXT NOT NULL,legacy_data TEXT,created_at TEXT NOT NULL,PRIMARY KEY(project,version))',
     'CREATE TABLE IF NOT EXISTS workspace_imports(key TEXT PRIMARY KEY,actor TEXT NOT NULL,fingerprint TEXT NOT NULL,result TEXT NOT NULL,created_at TEXT NOT NULL)',
     'CREATE TABLE IF NOT EXISTS workspace_provenance(project TEXT PRIMARY KEY,data TEXT NOT NULL)',
+    `CREATE TABLE IF NOT EXISTS workspace_deletions(project TEXT PRIMARY KEY,actor TEXT NOT NULL,key TEXT NOT NULL,fingerprint TEXT NOT NULL,version INTEGER NOT NULL,deleted_at TEXT NOT NULL,expires_at ${b} NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS auth_sessions(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires_at ${b} NOT NULL)`,
   ];
   await db.batch([...schema.map(sql=>db.prepare(sql)),db.prepare('INSERT OR IGNORE INTO wonderworks_schema(version) VALUES(?)').bind(SCHEMA_VERSION)]);
@@ -77,6 +78,7 @@ export async function readiness(db){
     db.prepare('SELECT id,data,version FROM workspaces LIMIT 0'),db.prepare('SELECT key,project,fingerprint,result,expires_at FROM mcp_receipts LIMIT 0'),
     db.prepare('SELECT project,hash,data FROM workspace_records LIMIT 0'),db.prepare('SELECT project,version,data,sha256,legacy_data,created_at FROM workspace_storage_versions LIMIT 0'),
     db.prepare('SELECT key,actor,fingerprint,result,created_at FROM workspace_imports LIMIT 0'),db.prepare('SELECT project,data FROM workspace_provenance LIMIT 0'),db.prepare('SELECT id,user_id,expires_at FROM auth_sessions LIMIT 0')
+    ,db.prepare('SELECT project,actor,key,fingerprint,version,deleted_at,expires_at FROM workspace_deletions LIMIT 0')
   ]);
   if(result[0].results[0]?.version!==SCHEMA_VERSION)throw Error('Database schema is incompatible. Back up, then run npm run setup.');
 }

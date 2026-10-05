@@ -14,7 +14,7 @@ test('real D1 rollback and worker replacement preserve creation and accepted eve
   let mf=start();
   try{
     let db=await mf.getD1Database('DB');
-    for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql'])for(const statement of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(statement).run();
+    for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql','0003_workspace_portability.sql','0004_workspace_deletion.sql'])for(const statement of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(statement).run();
     const doc={id:'history-test',prefix:'HT',name:'History D1 QA',version:0,requirementsVersion:1,sections:[{id:'section',title:'Behavior',description:''}],requirements:[],baselines:[],evidence:[],history:[],proposals:[],repositories:[]};
     await db.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,?)').bind(doc.id,JSON.stringify(doc),0).run();
     let store=new McpStore(db);const actor={id:'authenticated-actor'};

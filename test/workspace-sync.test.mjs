@@ -76,3 +76,12 @@ test('a stalled response body still times out, retains saved data and permits re
     fail=false;await sync.refresh();assert.equal(sync.current.version,3);assert.equal(states.at(-1).phase,'current');
   }finally{sync.stop();}
 });
+
+test('deleted workspace clears live state, preserves input through callback and rejects late saves',async()=>{
+  let unavailable=0;const {sync,states}=setup(async()=>new Response('',{status:404}),{onUnavailable:()=>unavailable++});
+  try{sync.accept(doc(1));await sync.refresh();assert.equal(unavailable,1);assert.equal(sync.current,null);assert.equal(states.at(-1).phase,'unavailable');assert.equal(sync.accept(doc(99)),false);await sync.refresh();assert.equal(unavailable,1);}finally{sync.stop();}
+});
+test('local deletion aborts overlapping reads without restoring removed content',async()=>{
+  const pending=deferred();const {sync}=setup(()=>pending.promise);
+  try{sync.accept(doc(1));const read=sync.refresh();sync.remove();pending.resolve(response(doc(9)));await read;assert.equal(sync.current,null);assert.equal(sync.accept(doc(10)),false);}finally{sync.stop();}
+});

@@ -6,7 +6,7 @@ export const MAX_RETRY_INTERVAL = 30000;
 // including its retained history. Give those downloads a bounded, realistic
 // deadline without slowing the cadence of successful unchanged checks.
 export const WORKSPACE_READ_TIMEOUT = 30000;
-export type SyncState = {phase:'connecting'|'current'|'reconnecting'|'offline'|'blocked';lastSuccess:number|null;message:string};
+export type SyncState = {phase:'connecting'|'current'|'reconnecting'|'offline'|'blocked'|'unavailable';lastSuccess:number|null;message:string};
 export class AccessRequired extends Error {}
 export function retryDelay(failures:number,random=Math.random){
   return Math.min(MAX_RETRY_INTERVAL,1500*2**Math.min(failures,5)*(0.75+random()*0.5));
@@ -25,25 +25,32 @@ export class WorkspaceSync {
   private queued=false;
   private failures=0;
   private blocked=false;
+  private unavailable=false;
   private lastSuccess:number|null=null;
   private doc:Workspace|null=null;
   constructor(readonly project:string,private options:{
     fetch:typeof fetch;onDocument:(doc:Workspace,remote:boolean)=>void;onState:(state:SyncState)=>void;
-    online?:()=>boolean;visible?:()=>boolean;random?:()=>number;now?:()=>number;
+    online?:()=>boolean;visible?:()=>boolean;random?:()=>number;now?:()=>number;onUnavailable?:()=>void;
   }){}
   get current(){return this.doc;}
   private state(phase:SyncState['phase'],message=''){
     if(!this.stopped)this.options.onState({phase,lastSuccess:this.lastSuccess,message});
   }
   accept(doc:Workspace,remote=false){
-    if(this.stopped||this.blocked||!newerWorkspace(this.project,this.doc,doc))return false;
+    if(this.stopped||this.blocked||this.unavailable||!newerWorkspace(this.project,this.doc,doc))return false;
     this.doc=doc;this.options.onDocument(doc,remote);return true;
   }
   deny(message='Sign in or restore access, then retry synchronization.'){
     this.blocked=true;this.queued=false;this.abort?.abort();clearTimeout(this.timer);this.state('blocked',message);
   }
+  remove(){
+    if(this.stopped||this.unavailable)return;
+    this.unavailable=true;this.blocked=true;this.queued=false;this.doc=null;
+    this.abort?.abort();clearTimeout(this.timer);this.options.onUnavailable?.();
+    this.state('unavailable','This workspace was deleted or is unavailable. Choose another project, create one, or import a workspace.');
+  }
   refresh=():Promise<void>=>{
-    if(this.stopped)return Promise.resolve();
+    if(this.stopped||this.unavailable)return Promise.resolve();
     clearTimeout(this.timer);
     if(this.request){this.queued=true;return this.request;}
     this.blocked=false;
@@ -66,7 +73,8 @@ export class WorkspaceSync {
       const response=await this.options.fetch('/api/workspace?'+query,{cache:'no-store',redirect:'manual',signal:abort.signal});
       if(this.stopped||this.blocked)return;
       if(abort.signal.aborted)throw Error('Connection timed out. Displayed data may be stale.');
-      if([401,403,404].includes(response.status)||response.redirected||response.type==='opaqueredirect'||response.status>=300&&response.status<400&&response.status!==304)throw new AccessRequired(response.status===404?'This project is unavailable. Choose another project or restore access.':'Sign in or restore access, then retry synchronization.');
+      if(response.status===404){this.remove();return;}
+      if([401,403].includes(response.status)||response.redirected||response.type==='opaqueredirect'||response.status>=300&&response.status<400&&response.status!==304)throw new AccessRequired('Sign in or restore access, then retry synchronization.');
       if(response.status!==304){
         if(!response.ok)throw Error('Unable to check for changes. Displayed data may be stale.');
         if(!response.headers.get('content-type')?.includes('application/json'))throw new AccessRequired('Sign in or restore access, then retry synchronization.');

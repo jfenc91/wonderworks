@@ -120,3 +120,10 @@
 .pdf-job{position:relative;margin:16px 0;max-width:100%;max-height:50vh;overflow:auto;padding:20px;border:1px solid var(--border);border-radius:12px;background:var(--background);box-shadow:0 8px 40px #0005;font-size:14px}.pdf-job p{margin:8px 0;overflow-wrap:anywhere}.pdf-job>div:last-child{display:flex;gap:12px;margin-top:12px}.pdf-job ul{padding-left:20px}.pdf-paper{display:flex;align-items:center;gap:16px}.pdf-paper select{padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--background)}
 
 .imported-provenance{padding:14px;margin:12px 24px;border:1px solid var(--border);border-radius:8px;background:var(--muted);font-size:13px;overflow-wrap:anywhere}
+
+/* Workspace deletion and recovery */
+.workspace-empty{max-width:1000px;margin:0 auto;padding:64px 28px;display:grid;gap:24px}.workspace-empty h1{font-size:36px}.workspace-empty .settings-card{width:100%}.workspace-empty textarea{width:100%;border:1px solid #d8d5cf;border-radius:8px;padding:12px;font-family:monospace}.workspace-empty select{display:block;padding:12px;min-width:240px;border:1px solid #d8d5cf;border-radius:8px}.workspace-empty>.primary{justify-self:start}.destructive{color:#a32b20!important;border-color:#b44435!important}.primary.destructive{background:#a32b20!important;color:white!important}.deletion-settings{border-color:#e2c8c2}.deletion-settings .settings-card-header{flex-wrap:wrap}
+
+.workspace-empty-actions{display:grid;gap:24px;min-width:0;border:0;padding:0}
+
+.workspace-delete-dialog{max-height:90dvh;overflow-y:auto}.workspace-delete-dialog .deletion-discard{display:flex;flex-direction:row;align-items:flex-start;gap:10px}.workspace-delete-dialog .deletion-discard input{width:16px;min-width:16px;height:16px;margin-top:3px;padding:0;box-shadow:none}.recovery-card{padding:24px;display:grid;gap:12px}.recovery-card button,.workspace-empty-actions>.primary{justify-self:start}

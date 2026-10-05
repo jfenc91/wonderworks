@@ -13,7 +13,7 @@ test('atomic application authoring rolls back creation/IDs/history and replays a
  let mf=start();
  try{
   let db=await mf.getD1Database('DB');
-  for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql'])for(const sql of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
+  for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql','0003_workspace_portability.sql','0004_workspace_deletion.sql'])for(const sql of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
   const doc={id:'authoring',name:'Atomic authoring',prefix:'AT',version:0,requirementsVersion:1,sections:[{id:'section',title:'Core',description:''}],requirements:[],proposals:[],baselines:[],evidence:[],history:[],repositories:[]};
   await db.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,0)').bind(doc.id,JSON.stringify(doc)).run();let store=new McpStore(db);
   const req={section:'section',title:'Atomic new behavior',description:'The requirement appears once in its proposal.',criteria:['The accepted set stays unchanged.'],priority:'High',status:'Draft',parameters:{enabled:true},links:[],tags:['proposal']};

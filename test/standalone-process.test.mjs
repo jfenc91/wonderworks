@@ -48,6 +48,23 @@ test('two PostgreSQL production processes share authentication, CAS/retry state 
   const results=await Promise.all([rpc(a.origin,'create_proposal',args,headers),rpc(b.origin,'create_proposal',args,headers)]);assert.deepEqual(results[0],results[1]);
   const saved=await json(b.origin,'/api/workspace?project='+doc.id,null,headers);assert.equal(saved.proposals.length,1);assert.equal(saved.history[0].mcp.actorId,user.id);
   await stop(a.child);const restarted=await start({...base,WW_PORT:'5183',WW_PUBLIC_URL:a.origin});assert.deepEqual(await rpc(restarted.origin,'create_proposal',args,headers),results[0]);
+  const deletion={project_id:doc.id,expected_workspace_version:saved.version,idempotency_key:'process-deletion-retry-key'};
+  const deleted=await json(a.origin,'/api/workspace-deletion',deletion,headers);assert.equal(deleted.deleted,true);
+  assert.deepEqual(await json(b.origin,'/api/workspace-deletion',deletion,headers),deleted);
+  await json(b.origin,'/api/workspace?project='+doc.id,null,headers,404);
+  await json(a.origin,'/api/workspace',{action:'section',project:doc.id,version:saved.version,section:{title:'Stale process',description:''}},headers,404);
+  const racing=await json(a.origin,'/api/workspace',{action:'project',name:'Delete versus independent save',prefix:'RC'},headers);
+  const raced=await Promise.all([fetch(a.origin+'/api/workspace-deletion',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({project_id:racing.id,expected_workspace_version:0,idempotency_key:'cross-process-deletion-race'})}),fetch(b.origin+'/api/workspace',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({action:'section',project:racing.id,version:0,section:{title:'Concurrent saved change',description:''}})})]);
+  const raceResults=await Promise.all(raced.map(async response=>({status:response.status,body:await response.json()})));
+  assert.equal(raced.filter(r=>r.status===200).length,1,JSON.stringify(raceResults));assert.ok(raced.some(r=>[404,409].includes(r.status)),JSON.stringify(raceResults));
+  const outcome=await fetch(a.origin+'/api/workspace?project='+racing.id,{headers});if(raced[0].status===200)assert.equal(outcome.status,404);else{const retained=await outcome.json();assert.equal(retained.version,1);assert.equal(retained.sections[0].title,'Concurrent saved change');}
+  const mcpRace=await json(a.origin,'/api/workspace',{action:'project',name:'Delete versus independent MCP',prefix:'MC'},headers);
+  const [mcpDelete,mcpWrite]=await Promise.all([
+    fetch(a.origin+'/api/workspace-deletion',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({project_id:mcpRace.id,expected_workspace_version:0,idempotency_key:'cross-process-mcp-deletion'})}),
+    json(b.origin,'/mcp',{jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'create_proposal',arguments:{project_id:mcpRace.id,expected_workspace_version:0,idempotency_key:'cross-process-mcp-save',title:'Concurrent proposal',description:''}}},{...headers,Accept:'application/json, text/event-stream','MCP-Protocol-Version':'2025-11-25'})
+  ]);
+  if(mcpDelete.status===200){assert.equal(mcpWrite.result.isError,true);assert.equal(mcpWrite.result.structuredContent.error.code,'NOT_FOUND',JSON.stringify(mcpWrite));}
+  else{assert.equal(mcpDelete.status,409);assert.equal(mcpWrite.result.isError,false,JSON.stringify(mcpWrite));}
   user.allowed=false;await writeFile(accountPath,JSON.stringify({users:[user]}));await json(b.origin,'/api/workspace?index=1',null,headers,403);await json(a.origin,'/api/workspace?index=1',null,{Cookie:cookie},403);
   assert.ok(!a.logs().includes('synthetic-local-testing-only'));assert.ok(!b.logs().includes(token));
 });

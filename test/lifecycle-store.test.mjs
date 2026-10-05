@@ -14,7 +14,7 @@ test('multi-requirement lifecycle, corrections, history, Activity and receipts a
  const dir=await mkdtemp(join(tmpdir(),'wonderworks-lifecycle-'));
  const start=()=>new Miniflare({modules:true,script:'export default {fetch(){return new Response("ok")}}',compatibilityDate:'2026-05-15',d1Databases:{DB:'lifecycle'},d1Persist:dir});let mf=start();
  try{
-  let db=await mf.getD1Database('DB');for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql'])for(const sql of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
+  let db=await mf.getD1Database('DB');for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql','0003_workspace_portability.sql','0004_workspace_deletion.sql'])for(const sql of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
   const doc={id:'lifecycle',name:'Atomic lifecycle',prefix:'LC',version:0,requirementsVersion:1,sections:[{id:'s',title:'Core',description:''}],requirements:[],proposals:[],baselines:[],evidence:[],history:[],repositories:[]};
   const p=createProposal(doc,{title:'Accepted batch'});for(let i=0;i<3;i++)editProposalRequirement(doc,p.id,{section:'s',title:'Behavior '+i,description:'Preserve exact accepted behavior.',criteria:['An observed outcome.']});
   let before=structuredClone(doc);submitProposal(doc,p.id);reviewProposal(doc,p.id,{decision:'apply'});captureRequirementHistory(before,doc,{source:'proposal_review',actor:{id:'owner'}});

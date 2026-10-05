@@ -1,5 +1,6 @@
 import {Zip,ZipPassThrough,deflateSync,Unzip,UnzipInflate} from 'fflate';
 import {buildGraph,materialize,parseNode,references,sha256,RECORD_ENCODING,type Node} from '../db/workspace-records';
+import type {DeletionRecord} from '../db/workspace-deletion';
 import type {Workspace,Requirement,Section} from './types';
 import {validateDependencies} from './requirements';
 import {validateReferences} from './item-content';
@@ -9,7 +10,7 @@ export const ARCHIVE_VERSION=1;
 export const ARCHIVE_LIMITS={compressed:32*1024*1024,expanded:64*1024*1024,records:10000,projects:50,depth:64,manifest:2*1024*1024,workspace:32*1024*1024};
 type StoredRow={data:string;version:number;id:string};
 export type ArchiveProject={id:string;name:string;version:number;requirementsVersion?:number;root:string};
-export type ArchiveManifest={format:'wonderworks.workspace';version:1;storage:typeof RECORD_ENCODING;producer:string;id:string;createdAt:string;projects:ArchiveProject[];records:{hash:string;bytes:number}[];expandedBytes:number;operations?:string};
+export type ArchiveManifest={format:'wonderworks.workspace';version:1|2;storage:typeof RECORD_ENCODING;producer:string;id:string;createdAt:string;projects:ArchiveProject[];records:{hash:string;bytes:number}[];expandedBytes:number;operations?:string;deletions?:string};
 export type Archive={manifest:ArchiveManifest;records:Map<string,string>;fingerprint:string};
 export type ProjectPayload={workspace:StoredRow;versions:{project:string;version:number;data:string;sha256:string;legacy_data:string|null;created_at:string}[];receipts:{key:string;project:string;fingerprint:string;result:string;expires_at:number}[];provenance?:unknown};
 const bytes=(s:string)=>new TextEncoder().encode(s);
@@ -81,9 +82,10 @@ export async function captureArchive(db:D1Database,scope:string|'all',signal?:Ab
     db.prepare('SELECT project,version,data,sha256,legacy_data,created_at FROM workspace_storage_versions'+(scope==='all'?'':' WHERE project=?')+' ORDER BY project,version').bind(...args),
     db.prepare('SELECT key,project,fingerprint,result,expires_at FROM mcp_receipts WHERE expires_at>?'+(scope==='all'?'':' AND project=?')+' ORDER BY key').bind(Date.now(),...args),
     db.prepare('SELECT project,data FROM workspace_provenance'+(scope==='all'?'':' WHERE project=?')).bind(...args),
-    db.prepare('SELECT key,actor,fingerprint,result,created_at FROM workspace_imports ORDER BY key')
+    db.prepare('SELECT key,actor,fingerprint,result,created_at FROM workspace_imports ORDER BY key'),
+    db.prepare('SELECT project,actor,key,fingerprint,version,deleted_at,expires_at FROM workspace_deletions'+(scope==='all'?'':' WHERE project=?')+' ORDER BY project').bind(...args)
   ]);
-  if(!rows[0].results.length||rows[0].results.length>ARCHIVE_LIMITS.projects)throw Error('Export requires 1–50 saved workspaces.');
+  if((!rows[0].results.length&&!(scope==='all'&&rows[5].results.length))||rows[0].results.length>ARCHIVE_LIMITS.projects)throw Error('Export requires 1–50 saved workspaces.');
   const records=new Map<string,string>(),collected=new Map<string,Set<string>>();let expanded=0;
   function add(hash:string,data:string){if(records.has(hash))return;expanded+=bytes(data).length;if(expanded>ARCHIVE_LIMITS.expanded||records.size>=ARCHIVE_LIMITS.records)throw Error('Workspace archive exceeds the supported expanded size or record count. Export fewer projects.');records.set(hash,data);}
   async function graph(value:unknown){const result=await buildGraph(value);for(const [h,s] of result.records)add(h,s);return result.root;}
@@ -123,7 +125,8 @@ export async function captureArchive(db:D1Database,scope:string|'all',signal?:Ab
   const ids=new Set(projects.map(p=>p.id));
   const operations=(rows[4].results as {key:string;actor:string;fingerprint:string;result:string;created_at:string}[]).filter(op=>{const result=JSON.parse(op.result) as {projects:{id:string}[]};return Array.isArray(result.projects)&&result.projects.length&&result.projects.every(p=>ids.has(p.id));});
   const operationsRoot=operations.length?await graph(operations):undefined;
-  const manifest:ArchiveManifest={format:'wonderworks.workspace',version:1,storage:RECORD_ENCODING,producer:'wonderworks/0.2.0',id:crypto.randomUUID(),createdAt:new Date().toISOString(),projects,records:[...records].map(([hash,data])=>({hash,bytes:bytes(data).length})),expandedBytes:expanded,...(operationsRoot?{operations:operationsRoot}:{})};
+  const deletions=scope==='all'&&rows[5].results.length?await graph((rows[5].results as DeletionRecord[]).map(row=>({...row,expires_at:Number(row.expires_at)}))):undefined;
+  const manifest:ArchiveManifest={format:'wonderworks.workspace',version:deletions?2:1,storage:RECORD_ENCODING,producer:'wonderworks/0.2.0',id:crypto.randomUUID(),createdAt:new Date().toISOString(),projects,records:[...records].map(([hash,data])=>({hash,bytes:bytes(data).length})),expandedBytes:expanded,...(operationsRoot?{operations:operationsRoot}:{}),...(deletions?{deletions}:{})};
   return {manifest,records,fingerprint:await sha256(JSON.stringify(manifest))};
 }
 
@@ -169,7 +172,7 @@ export async function decodeArchive(stream:ReadableStream<Uint8Array>,signal?:Ab
   catch(error){await reader.cancel().catch(()=>{});throw error;}
   if(completed.size!==files.size)throw Error('Incomplete archive.');validateArchiveDirectory(tail,compressed,files);manifestText=files.get('manifest.json')??'';
   const m=JSON.parse(manifestText) as ArchiveManifest;jsonDepth(m);
-  if(m.format!=='wonderworks.workspace'||m.version!==ARCHIVE_VERSION||m.storage!==RECORD_ENCODING||!Array.isArray(m.projects)||!m.projects.length||m.projects.length>ARCHIVE_LIMITS.projects||!Array.isArray(m.records)||m.records.length>ARCHIVE_LIMITS.records||typeof m.id!=='string'||!m.id||files.size!==m.records.length+1)throw Error('Unsupported or malformed workspace archive.');
+  if(m.format!=='wonderworks.workspace'||![ARCHIVE_VERSION,2].includes(m.version)||m.storage!==RECORD_ENCODING||!Array.isArray(m.projects)||(!m.projects.length&&!m.deletions)||m.projects.length>ARCHIVE_LIMITS.projects||!Array.isArray(m.records)||m.records.length>ARCHIVE_LIMITS.records||typeof m.id!=='string'||!m.id||files.size!==m.records.length+1)throw Error('Unsupported or malformed workspace archive.');
   unique(m.projects.map(p=>p.id),'workspace IDs');unique(m.records.map(r=>r.hash),'record hashes');
   const records=new Map<string,string>();let count=0;
   for(const r of m.records){const data=files.get('records/'+r.hash+'.json');if(!hashPattern.test(r.hash)||data===undefined||bytes(data).length!==r.bytes||await sha256(data)!==r.hash)throw Error('Missing or corrupt archive record.');count+=r.bytes;const node=parseNode(data);jsonDepth(node);records.set(r.hash,data);}
@@ -183,7 +186,13 @@ export async function decodeArchive(stream:ReadableStream<Uint8Array>,signal?:Ab
     for(const r of provenanceReceipts(data.provenance))archivedValue(archive,r.result);
   }
   if(m.operations)graphValue(archive,m.operations);
+  const deletions=archiveDeletions(archive);
+  if(m.deletions&&m.version!==2)throw Error('Invalid deletion archive version.');
+  unique(deletions.map(d=>d.project),'deleted project IDs');
+  for(const d of deletions)if(!projectPattern.test(d.project)||m.projects.some(p=>p.id===d.project)||typeof d.actor!=='string'||!d.actor||!hashPattern.test(d.key)||!hashPattern.test(d.fingerprint)||!Number.isSafeInteger(d.version)||d.version<1||!Number.isSafeInteger(d.expires_at)||!Number.isFinite(Date.parse(d.deleted_at))||Object.keys(d).sort().join(',')!=='actor,deleted_at,expires_at,fingerprint,key,project,version')throw Error('Invalid workspace deletion record.');
   return archive;
 }
 
 export function archiveOperations(archive:Archive){return archive.manifest.operations?graphValue(archive,archive.manifest.operations) as {key:string;actor:string;fingerprint:string;result:string;created_at:string}[]:[];}
+
+export function archiveDeletions(archive:Archive):DeletionRecord[]{const rows=archive.manifest.deletions?graphValue(archive,archive.manifest.deletions):[];if(!Array.isArray(rows))throw Error('Invalid workspace deletion records.');return rows;}

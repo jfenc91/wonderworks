@@ -16,7 +16,7 @@ test('legacy JSON and compressed Unicode/exact source round-trip without authore
 test('large D1 lifecycle writes preserve complete history, frozen data, rollback, version gates and restart replay',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'wonderworks-large-'));const start=()=>new Miniflare({modules:true,script:'export default {fetch(){return new Response("ok")}}',compatibilityDate:'2026-05-15',d1Databases:{DB:'large'},d1Persist:dir});let mf=start();
  try{
-  let db=await mf.getD1Database('DB');for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql'])for(const sql of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
+  let db=await mf.getD1Database('DB');for(const file of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql','0003_workspace_portability.sql','0004_workspace_deletion.sql'])for(const sql of (await readFile(new URL('../drizzle/'+file,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
   const body='### Exact rich source 👩🏽‍💻\n\n| Name | Value |\n|---|---|\n| snake_case | x < y |\n'.repeat(100);
   const large=structuredClone(doc);large.requirements=Array.from({length:100},(_,i)=>({id:'LG-'+String(i+1).padStart(3,'0'),revision:1,section:'s',title:'Large requirement '+i,description:body,criteria:['Preserve the complete source.'],priority:'High',status:'Approved',parameters:{},links:[],tags:[],body_format:'markdown'}));
   large.baselines=Array.from({length:12},(_,i)=>({id:'BL-'+String(i+1).padStart(3,'0'),name:'Frozen '+i,date:'2026-10-04T00:00:00.000Z',requirementsVersion:1,requirements:structuredClone(large.requirements),sections:large.sections}));

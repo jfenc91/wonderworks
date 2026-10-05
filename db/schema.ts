@@ -4,6 +4,7 @@ export const workspaces=sqliteTable('workspaces',{id:text('id').primaryKey(),dat
 export const wonderworksSchema=sqliteTable('wonderworks_schema',{version:integer('version').primaryKey()});
 export const workspaceImports=sqliteTable('workspace_imports',{key:text('key').primaryKey(),actor:text('actor').notNull(),fingerprint:text('fingerprint').notNull(),result:text('result').notNull(),createdAt:text('created_at').notNull()});
 export const workspaceProvenance=sqliteTable('workspace_provenance',{project:text('project').primaryKey(),data:text('data').notNull()});
+export const workspaceDeletions=sqliteTable('workspace_deletions',{project:text('project').primaryKey(),actor:text('actor').notNull(),key:text('key').notNull(),fingerprint:text('fingerprint').notNull(),version:integer('version').notNull(),deletedAt:text('deleted_at').notNull(),expiresAt:integer('expires_at').notNull()});
 export const mcpReceipts=sqliteTable('mcp_receipts',{
   key:text('key').primaryKey(),project:text('project').notNull(),fingerprint:text('fingerprint').notNull(),
   result:text('result').notNull(),expiresAt:integer('expires_at').notNull()

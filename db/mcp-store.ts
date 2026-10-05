@@ -14,15 +14,22 @@ export class McpStore {
   async read(id:string):Promise<Workspace>{
     const row=await this.db.prepare('SELECT data,version FROM workspaces WHERE id=?').bind(id).first<{data:string;version:number}>();
     if(!row)throw new ToolError('NOT_FOUND','Project not found or unavailable.');
-    const records=new StoredRecordSession(this.db,id),stored=await readStoredRecord<Workspace>(this.db,id,row.data,records);
+    const records=new StoredRecordSession(this.db,id);
+    let stored:Workspace;
+    try{stored=await readStoredRecord<Workspace>(this.db,id,row.data,records);}
+    catch(error){await this.requireLive(id);throw error;}
     const doc={...stored,id,version:row.version,requirementsVersion:stored.requirementsVersion??1,repositories:stored.repositories??[],proposals:stored.proposals??[]};
     this.reads.set(doc,records);return doc;
+  }
+  private async requireLive(id:string){
+    if(!await this.db.prepare('SELECT id FROM workspaces WHERE id=?').bind(id).first())throw new ToolError('NOT_FOUND','Project not found or unavailable.');
   }
   async replay(key:string,fingerprint:string,now:number){
     const row=await this.db.prepare('SELECT project,fingerprint,result FROM mcp_receipts WHERE key=? AND expires_at>?').bind(key,now).first<{project:string;fingerprint:string;result:string}>();
     if(!row)return null;
     if(row.fingerprint!==fingerprint)throw new ToolError('IDEMPOTENCY_KEY_REUSED','This idempotency key was already used with different arguments.');
-    return readStoredRecord<Record<string,unknown>>(this.db,row.project,row.result);
+    try{return await readStoredRecord<Record<string,unknown>>(this.db,row.project,row.result);}
+    catch(error){await this.requireLive(row.project);throw error;}
   }
   async commit(doc:Workspace,expected:number,receipt:Receipt,now:number,unchanged=false){
     // D1 batch is a transaction: INSERT and UPDATE see the same version and
@@ -46,6 +53,7 @@ export class McpStore {
       ]);
       if(results.at(-1)!.meta.changes===1)return receipt.result;
     }catch(error){
+      await this.requireLive(doc.id);
       // Diagnose storage limits without logging workspace content or credentials.
       const message=String(error instanceof Error?error.message:error)+' '+String((error as {cause?:{message?:string}})?.cause?.message??'');
       console.error(JSON.stringify({event:'workspace_commit_failure',bytes:new TextEncoder().encode(JSON.stringify(doc)).length,reason:/too big|TOOBIG/i.test(message)?'value_too_large':/too many|limit/i.test(message)?'storage_limit':/constraint|UNIQUE/i.test(message)?'constraint':/locked|busy/i.test(message)?'busy':'unclassified',code:message.match(/\b(?:SQLITE|D1)_[A-Z_]+\b/g)??[],errorName:error instanceof Error?error.name:'unknown'}));

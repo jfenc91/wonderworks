@@ -10,10 +10,11 @@ export default {
     if(!readyBindings.has(env.DB)){
       try{
         const schema=await env.DB.prepare('SELECT version FROM wonderworks_schema ORDER BY version DESC LIMIT 1').first<{version:number}>();
-        if(schema?.version!==4)throw Error();
+        if(schema?.version!==5)throw Error();
         await env.DB.batch([
           env.DB.prepare('SELECT key,actor,fingerprint,result,created_at FROM workspace_imports LIMIT 0'),
           env.DB.prepare('SELECT project,data FROM workspace_provenance LIMIT 0'),
+          env.DB.prepare('SELECT project,actor,key,fingerprint,version,deleted_at,expires_at FROM workspace_deletions LIMIT 0'),
           env.DB.prepare('SELECT id,data FROM workspaces LIMIT 0'),
         ]);
         readyBindings.add(env.DB);

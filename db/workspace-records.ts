@@ -146,7 +146,7 @@ export async function prepareStoredRecord(db:D1Database,project:string,value:unk
   // write leaves the previous root, retry receipt, and history untouched.
   for(let i=0;i<missing.length;i+=200){
     const statements=[];
-    for(let j=i;j<Math.min(i+200,missing.length);j+=20){const hashes=missing.slice(j,Math.min(j+20,i+200));statements.push(db.prepare(`INSERT OR IGNORE INTO workspace_records(project,hash,data) VALUES ${hashes.map(()=>'(?,?,?)').join(',')}`).bind(...hashes.flatMap(hash=>[project,hash,graph.records.get(hash)!])));}
+    for(let j=i;j<Math.min(i+200,missing.length);j+=20){const hashes=missing.slice(j,Math.min(j+20,i+200));statements.push(db.prepare(`INSERT INTO workspace_deletions(project,actor,key,fingerprint,version,deleted_at,expires_at) SELECT project,actor,key,fingerprint,version,deleted_at,expires_at FROM workspace_deletions WHERE project=?`).bind(project),db.prepare(`INSERT OR IGNORE INTO workspace_records(project,hash,data) VALUES ${hashes.map(()=>'(?,?,?)').join(',')}`).bind(...hashes.flatMap(hash=>[project,hash,graph.records.get(hash)!])));}
     await db.batch(statements);
   }
   // Read back newly staged records exactly, and reuse earlier verified content.
