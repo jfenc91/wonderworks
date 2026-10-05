@@ -20,6 +20,15 @@ test('workspace export, preview, copy and preserved review workflows through Chr
     await page.goto(origin+'/signin-with-chatgpt?return_to=/');await page.goto(origin);
     await page.getByRole('combobox',{name:'Current project'}).click();await page.getByRole('option',{name:doc.name,exact:true}).click();
     await page.getByRole('tab',{name:'Settings',exact:true}).click();const dialog=page.getByRole('region',{name:'Workspace backup & import',exact:true});
+    // A proxy can end a partial export with HTTP 200. Never offer those bytes
+    // as a successful backup, and keep the export action available for retry.
+    let badDownloads=0;const onDownload=()=>badDownloads++;page.on('download',onDownload);
+    const archiveRoute='**/api/workspace-archive?scope=*';
+    await page.route(archiveRoute,route=>route.fulfill({status:200,contentType:'application/zip',body:Buffer.from('PK\x03\x04truncated')}));
+    await dialog.getByRole('button',{name:'Export workspace',exact:true}).click();
+    await dialog.getByRole('alert').filter({hasText:'Incomplete workspace archive. Download it again.'}).waitFor();
+    assert.equal(badDownloads,0);assert.equal(await dialog.getByText('Download archive again',{exact:true}).count(),0);
+    page.off('download',onDownload);await page.unroute(archiveRoute);
     await dialog.getByLabel('Export workspace scope').selectOption('current');const downloaded=page.waitForEvent('download');await dialog.getByRole('button',{name:'Export workspace',exact:true}).click();const download=await downloaded;
     await mkdir('outputs/bl015-browser',{recursive:true});const file='outputs/bl015-browser/'+new URL(origin).port+'.wwspace';await download.saveAs(file);assert.ok((await readFile(file)).length>100);
     await dialog.getByText(/Ready: 1 workspace/).waitFor();await dialog.getByLabel('Workspace archive',{exact:true}).setInputFiles(file);await dialog.getByRole('button',{name:'Preview archive',exact:true}).click();

@@ -3,6 +3,7 @@ import {buildGraph,materialize,parseNode,references,sha256,RECORD_ENCODING,type 
 import type {Workspace,Requirement,Section} from './types';
 import {validateDependencies} from './requirements';
 import {validateReferences} from './item-content';
+import {validateArchiveDirectory,validateArchiveDownload} from './archive-download.mjs';
 
 export const ARCHIVE_VERSION=1;
 export const ARCHIVE_LIMITS={compressed:32*1024*1024,expanded:64*1024*1024,records:10000,projects:50,depth:64,manifest:2*1024*1024,workspace:32*1024*1024};
@@ -130,6 +131,13 @@ export function encodeArchive(archive:Archive,signal?:AbortSignal):ReadableStrea
     cancel(){ended=true;zip.terminate();}
   });
 }
+export async function completeArchive(archive:Archive,signal?:AbortSignal):Promise<Blob>{
+  // Finish the bounded compressed file before committing HTTP success. A late
+  // encoder failure must become an export error, not a downloadable ZIP prefix.
+  const blob=await new Response(encodeArchive(archive,signal)).blob();
+  await validateArchiveDownload(blob,signal);
+  return blob;
+}
 export async function decodeArchive(stream:ReadableStream<Uint8Array>,signal?:AbortSignal):Promise<Archive>{
   let compressed=0,expanded=0,manifestText='',failure:Error|undefined,tail=new Uint8Array(0);const files=new Map<string,string>(),completed=new Set<string>();
   const unzip=new Unzip(file=>{
@@ -143,7 +151,7 @@ export async function decodeArchive(stream:ReadableStream<Uint8Array>,signal?:Ab
   const reader=stream.getReader();
   try{while(true){checkAbort(signal);const {done,value}=await reader.read();if(done)break;compressed+=value.length;if(compressed>ARCHIVE_LIMITS.compressed)throw Error('Archive exceeds 32 MiB.');const keep=Math.min(tail.length,Math.max(0,2*1024*1024-value.length)),next=new Uint8Array(keep+Math.min(value.length,2*1024*1024));next.set(tail.subarray(tail.length-keep));next.set(value.subarray(Math.max(0,value.length-2*1024*1024)),keep);tail=next;for(let i=0;i<value.length;i+=16384){unzip.push(value.subarray(i,i+16384),false);if(failure)throw failure;}}unzip.push(new Uint8Array(),true);if(failure)throw failure;}
   catch(error){await reader.cancel().catch(()=>{});throw error;}
-  if(completed.size!==files.size)throw Error('Incomplete archive.');validateDirectory(tail,compressed,files);manifestText=files.get('manifest.json')??'';
+  if(completed.size!==files.size)throw Error('Incomplete archive.');validateArchiveDirectory(tail,compressed,files);manifestText=files.get('manifest.json')??'';
   const m=JSON.parse(manifestText) as ArchiveManifest;jsonDepth(m);
   if(m.format!=='wonderworks.workspace'||m.version!==ARCHIVE_VERSION||m.storage!==RECORD_ENCODING||!Array.isArray(m.projects)||!m.projects.length||m.projects.length>ARCHIVE_LIMITS.projects||!Array.isArray(m.records)||m.records.length>ARCHIVE_LIMITS.records||typeof m.id!=='string'||!m.id||files.size!==m.records.length+1)throw Error('Unsupported or malformed workspace archive.');
   unique(m.projects.map(p=>p.id),'workspace IDs');unique(m.records.map(r=>r.hash),'record hashes');
@@ -160,22 +168,6 @@ export async function decodeArchive(stream:ReadableStream<Uint8Array>,signal?:Ab
   }
   if(m.operations)graphValue(archive,m.operations);
   return archive;
-}
-
-function validateDirectory(tail:Uint8Array,total:number,files:Map<string,string>){
-  const view=new DataView(tail.buffer,tail.byteOffset,tail.byteLength),u16=(o:number)=>view.getUint16(o,true),u32=(o:number)=>view.getUint32(o,true);
-  // Our documented ZIP subset is single-disk, no encryption, no ZIP64, and no
-  // archive comment. Checking the directory catches truncated streams and
-  // ambiguous central/local filenames which a streaming inflater can ignore.
-  const end=tail.length-22;
-  if(end<0||u32(end)!==0x06054b50||u16(end+4)!==0||u16(end+6)!==0||u16(end+20)!==0||u16(end+8)!==u16(end+10)||u16(end+10)!==files.size||u32(end+12)>2*1024*1024-22||u32(end+16)+u32(end+12)+22!==total)throw Error('Invalid or incomplete ZIP directory.');
-  let offset=u32(end+16)-(total-tail.length);const names=new Set<string>();
-  for(let i=0;i<files.size;i++){
-    if(offset<0||offset+46>end||u32(offset)!==0x02014b50||u16(offset+8)&~0x0808||![0,8].includes(u16(offset+10))||u16(offset+34)!==0)throw Error('Unsupported ZIP entry.');
-    const length=u16(offset+28),extra=u16(offset+30),comment=u16(offset+32),next=offset+46+length+extra+comment;if(next>end||extra||comment)throw Error('Unsupported ZIP entry metadata.');
-    const name=new TextDecoder('utf-8',{fatal:true}).decode(tail.subarray(offset+46,offset+46+length));if(names.has(name)||!files.has(name)||u32(offset+24)!==bytes(files.get(name)!).length)throw Error('Invalid ZIP path or size.');names.add(name);offset=next;
-  }
-  if(offset!==end)throw Error('Invalid ZIP directory size.');
 }
 
 export function archiveOperations(archive:Archive){return archive.manifest.operations?graphValue(archive,archive.manifest.operations) as {key:string;actor:string;fingerprint:string;result:string;created_at:string}[]:[];}

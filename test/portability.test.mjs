@@ -12,7 +12,9 @@ import {authenticate,passwordHash,tokenHash,trustedRequest,authRoute} from '../s
 import {workspace,apply} from './fixtures/snapshot-workspace.mjs';
 import {McpStore} from '../db/mcp-store.ts';
 import {prepareStoredRecord,readStoredRecord,sha256} from '../db/workspace-records.ts';
-import {captureArchive,encodeArchive,decodeArchive,archiveWorkspace,validateWorkspace} from '../lib/workspace-archive.ts';
+import {captureArchive,encodeArchive,decodeArchive,archiveWorkspace,validateWorkspace,ARCHIVE_LIMITS} from '../lib/workspace-archive.ts';
+import {runWithDatabase} from '../db/runtime.ts';
+import {GET as exportArchive} from '../app/api/workspace-archive/route.ts';
 import {importArchive,previewArchive} from '../db/archive-store.ts';
 import {callTool} from '../lib/mcp/service.ts';
 const directory=await mkdtemp(join(tmpdir(),'ww-portability-'));
@@ -71,6 +73,17 @@ test('SQLite repeatable migration, restart replay, stale writes, atomic rollback
   const before=await new McpStore(db).read(doc.id),archive=await captureArchive(db,'all'),zip=await compressed(archive),restored=await decode(zip);
   assert.deepEqual(archiveWorkspace(restored,restored.manifest.projects[0]),before);
   assert.ok(zip.length<JSON.stringify(before).length);assert.equal((await new McpStore(db).read(doc.id)).version,5);
+  await t.test('HTTP export completes before success and encoding failures return JSON errors',async()=>{
+    const request=()=>new Request('https://example.test/api/workspace-archive?scope='+doc.id,{headers:{'oai-authenticated-user-id':'operator'}});
+    const response=await runWithDatabase(db,()=>exportArchive(request()));
+    assert.equal(response.status,200);const downloaded=new Uint8Array(await response.arrayBuffer());
+    assert.equal(Number(response.headers.get('Content-Length')),downloaded.length);
+    assert.deepEqual(archiveWorkspace(await decode(downloaded),archive.manifest.projects[0]),before);
+    const limit=ARCHIVE_LIMITS.compressed;
+    try{ARCHIVE_LIMITS.compressed=1;const failed=await runWithDatabase(db,()=>exportArchive(request()));assert.equal(failed.status,400);assert.match(failed.headers.get('Content-Type'),/application\/json/);assert.ok((await failed.json()).error);}
+    finally{ARCHIVE_LIMITS.compressed=limit;}
+    assert.deepEqual(await new McpStore(db).read(doc.id),before);
+  });
   const target=await sqlite('target');databases.push(target);
   const imported=await importArchive(target,restored,[{id:doc.id,mode:'restore'}],'operator','restore-original-operation');
   assert.deepEqual(await new McpStore(target).read(doc.id),before);

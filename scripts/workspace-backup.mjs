@@ -1,7 +1,8 @@
-import {createWriteStream} from 'node:fs';
+import {createWriteStream,openAsBlob} from 'node:fs';
 import {readFile,rename,stat,writeFile} from 'node:fs/promises';
 import {Readable,Transform} from 'node:stream';
 import {pipeline} from 'node:stream/promises';
+import {validateArchiveDownload} from '../lib/archive-download.mjs';
 const [action,url,file]=process.argv.slice(2);
 if(!['backup','restore-empty'].includes(action)||!url||!file)throw Error('Usage: npm run workspace -- backup|restore-empty BASE_URL PRIVATE_FILE.wwspace');
 const base=new URL(url);if(base.username||base.password||!['https:','http:'].includes(base.protocol))throw Error('Use an HTTP(S) origin without credentials.');
@@ -12,6 +13,7 @@ async function checked(response){if(!response.ok)throw Error(`Transfer failed (H
 if(action==='backup'){
   endpoint.searchParams.set('scope','all');const response=await checked(await fetch(endpoint,{headers}));let size=0;
   await pipeline(Readable.fromWeb(response.body),new Transform({transform(chunk,_,next){size+=chunk.length;next(size>32*1024*1024?Error('Archive exceeds 32 MiB.'):null,chunk);}}),createWriteStream(file+'.partial',{flags:'wx',mode:0o600}));
+  await validateArchiveDownload(await openAsBlob(file+'.partial'));
   await rename(file+'.partial',file);console.log(JSON.stringify({status:'backup_complete',projects:Number(response.headers.get('x-workspace-count')),bytes:size}));
 }else{
   if((await stat(file)).size>32*1024*1024)throw Error('Archive exceeds 32 MiB.');

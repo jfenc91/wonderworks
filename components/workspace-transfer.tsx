@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {Archive,Download,Upload,FileArchive,CheckCircle2,LoaderCircle} from 'lucide-react';
+import {validateArchiveDownload} from '@/lib/archive-download.mjs';
 type Preview={archive_id:string;fingerprint:string;projects:{id:string;name:string;version:number;items:number;proposals:number;snapshots:number;history_events:number;conflict:boolean}[];warnings:string[]};
 const pendingImportKey='wonderworks.pending-import.v1';
 export function WorkspaceTransfer({project,onOpenProject}:{project:string;onOpenProject:(id:string)=>void}){
@@ -13,10 +14,13 @@ export function WorkspaceTransfer({project,onOpenProject}:{project:string;onOpen
     const abort=new AbortController();controller.current=abort;setBusy(true);setError('');setResult([]);setMessage(action==='export'?'Capturing committed workspace versions…':action==='preview'?'Uploading and validating archive…':'Validating and importing selected workspaces…');
     try{
       if(action==='export'){
+        replaceDownload('');
         const r=await fetch('/api/workspace-archive?scope='+encodeURIComponent(scope==='all'?'all':project),{signal:abort.signal,cache:'no-store'});if(!r.ok)throw Error(((await r.json()) as {error?:string}).error??'Export failed.');
         const reader=r.body?.getReader();if(!reader)throw Error('Download unavailable.');const chunks:Uint8Array[]=[];let count=0;
         while(true){const {done,value}=await reader.read();if(done)break;count+=value.length;if(count>32*1024*1024){await reader.cancel();throw Error('Archive exceeds 32 MiB.');}chunks.push(value);setMessage(`Downloading ${(count/1024/1024).toFixed(1)} MiB…`);}
-        const url=URL.createObjectURL(new Blob(chunks as BlobPart[],{type:'application/zip'}));replaceDownload(url);const a=document.createElement('a');a.href=url;a.download='wonderworks-workspaces.wwspace';a.click();
+        setMessage('Checking archive download…');
+        const blob=new Blob(chunks as BlobPart[],{type:'application/zip'});await validateArchiveDownload(blob,abort.signal);
+        const url=URL.createObjectURL(blob);replaceDownload(url);const a=document.createElement('a');a.href=url;a.download='wonderworks-workspaces.wwspace';a.click();
         const versions=JSON.parse(r.headers.get('x-workspace-versions')??'[]') as {id:string;version:number}[];setMessage(`Ready: ${r.headers.get('x-workspace-count')} workspace(s). Saved versions: ${versions.map(p=>p.id+' v'+p.version).join(', ')}.`);
       }else{
         if(!file)throw Error('Choose a .wwspace archive.');if(file.size>32*1024*1024)throw Error('Choose an archive no larger than 32 MiB.');

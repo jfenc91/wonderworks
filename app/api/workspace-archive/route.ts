@@ -1,6 +1,6 @@
 import {database} from '@/db/runtime';
 import {readStoredRecord} from '@/db/workspace-records';
-import {captureArchive,encodeArchive,decodeArchive,ARCHIVE_LIMITS} from '@/lib/workspace-archive';
+import {captureArchive,completeArchive,decodeArchive,ARCHIVE_LIMITS} from '@/lib/workspace-archive';
 import {previewArchive,importArchive,type ImportSelection} from '@/db/archive-store';
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'private, no-store'};
@@ -12,7 +12,8 @@ export async function GET(request:Request){
     if(url.searchParams.has('provenance')){const id=url.searchParams.get('provenance')!;const row=await db.prepare('SELECT data FROM workspace_provenance WHERE project=?').bind(id).first<{data:string}>();return Response.json(row?await readStoredRecord(db,id,row.data):null,{headers});}
     const scope=url.searchParams.get('scope');if(!scope)throw Error('Choose the current project or all accessible workspaces.');
     const archive=await captureArchive(db,scope,request.signal);
-    return new Response(encodeArchive(archive,request.signal),{headers:{...headers,'Content-Type':'application/zip','Content-Disposition':'attachment; filename="wonderworks-workspaces.wwspace"','X-Workspace-Count':String(archive.manifest.projects.length),'X-Workspace-Versions':JSON.stringify(archive.manifest.projects.map(p=>({id:p.id,version:p.version})))}});
+    const file=await completeArchive(archive,request.signal);
+    return new Response(file,{headers:{...headers,'Content-Type':'application/zip','Content-Length':String(file.size),'Content-Disposition':'attachment; filename="wonderworks-workspaces.wwspace"','X-Workspace-Count':String(archive.manifest.projects.length),'X-Workspace-Versions':JSON.stringify(archive.manifest.projects.map(p=>({id:p.id,version:p.version})))}});
   }catch{return Response.json({error:'Workspace export failed or exceeds its limits. Retry with fewer projects after checking storage.'},{status:400,headers});}
 }
 export async function POST(request:Request){
