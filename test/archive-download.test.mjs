@@ -50,6 +50,23 @@ test('cancelled export and download checks do not produce a completed file',asyn
   await assert.rejects(()=>validateArchiveDownload(blob,abort.signal));
 });
 
+test('thousands of completed ZIP entries do not retain per-file compressor buffers',async()=>{
+  const code=`
+    import {encodeArchive} from './lib/workspace-archive.ts';
+    const records=new Map(Array.from({length:5123},(_,i)=>[i.toString(16).padStart(64,'0'),JSON.stringify({type:'value',value:'record '+i})]));
+    global.gc();const before=process.memoryUsage().arrayBuffers;
+    const reader=encodeArchive({manifest:{records:[]},records}).getReader();let count=0,peak=before;
+    for(;;){const {done}=await reader.read();if(done)break;if(++count%500===0){global.gc();peak=Math.max(peak,process.memoryUsage().arrayBuffers);}}
+    console.log(JSON.stringify({chunks:count,retained:peak-before}));
+  `;
+  const result=await new Promise((resolve,reject)=>{
+    const child=spawn(process.execPath,['--expose-gc','--import','tsx','--input-type=module','-e',code],{cwd:new URL('..',import.meta.url)});
+    let stdout='',stderr='';child.stdout.on('data',b=>stdout+=b);child.stderr.on('data',b=>stderr+=b);child.on('error',reject);child.on('exit',code=>resolve({code,stdout,stderr}));
+  });
+  assert.equal(result.code,0,result.stderr);const memory=JSON.parse(result.stdout);
+  assert.ok(memory.chunks>10000);assert.ok(memory.retained<64*1024*1024,`Retained ${memory.retained} bytes in ZIP entry buffers`);
+});
+
 test('backup CLI rejects HTTP 200 truncation and preserves the previous backup',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'ww-download-'));
   let body=zip.subarray(0,directory);

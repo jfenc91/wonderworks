@@ -1,4 +1,4 @@
-import {Zip,ZipDeflate,Unzip,UnzipInflate} from 'fflate';
+import {Zip,ZipPassThrough,deflateSync,Unzip,UnzipInflate} from 'fflate';
 import {buildGraph,materialize,parseNode,references,sha256,RECORD_ENCODING,type Node} from '../db/workspace-records';
 import type {Workspace,Requirement,Section} from './types';
 import {validateDependencies} from './requirements';
@@ -84,17 +84,22 @@ export async function captureArchive(db:D1Database,scope:string|'all',signal?:Ab
     db.prepare('SELECT key,actor,fingerprint,result,created_at FROM workspace_imports ORDER BY key')
   ]);
   if(!rows[0].results.length||rows[0].results.length>ARCHIVE_LIMITS.projects)throw Error('Export requires 1–50 saved workspaces.');
-  const records=new Map<string,string>();let expanded=0;
+  const records=new Map<string,string>(),collected=new Map<string,Set<string>>();let expanded=0;
   function add(hash:string,data:string){if(records.has(hash))return;expanded+=bytes(data).length;if(expanded>ARCHIVE_LIMITS.expanded||records.size>=ARCHIVE_LIMITS.records)throw Error('Workspace archive exceeds the supported expanded size or record count. Export fewer projects.');records.set(hash,data);}
   async function graph(value:unknown){const result=await buildGraph(value);for(const [h,s] of result.records)add(h,s);return result.root;}
   async function collect(project:string,data:string):Promise<string>{
     checkAbort(signal);const value=JSON.parse(data);
     if(value?.storage_encoding===RECORD_ENCODING){
-      let pending=[value.root];const seen=new Set<string>();
-      while(pending.length){checkAbort(signal);const group=[...new Set(pending)].filter(h=>!seen.has(h)).slice(0,24);if(!group.length)break;pending=pending.filter(h=>!group.includes(h));group.forEach(h=>seen.add(h));
-        const result=await db.prepare(`SELECT hash,data FROM workspace_records WHERE project=? AND hash IN (${group.map(()=>'?').join(',')})`).bind(project,...group).all<{hash:string;data:string}>();
-        if(result.results.length!==group.length)throw Error('Missing durable archive record.');
-        for(const r of result.results){if(await sha256(r.data)!==r.hash)throw Error('Storage checksum failed.');add(r.hash,r.data);pending.push(...references(parseNode(r.data)));}
+      // Historical roots share most records. Verify each row once per project
+      // and capture, without letting another project's identical hash satisfy it.
+      let pending=[value.root];const seen=collected.get(project)??new Set<string>();collected.set(project,seen);
+      while(pending.length){checkAbort(signal);const hashes=[...new Set(pending)].filter(h=>!seen.has(h)).slice(0,192);if(!hashes.length)break;const selected=new Set(hashes);pending=pending.filter(h=>!selected.has(h));
+        const groups=[];for(let i=0;i<hashes.length;i+=24)groups.push(hashes.slice(i,i+24));
+        const results=await db.batch<{hash:string;data:string}>(groups.map(group=>db.prepare(`SELECT hash,data FROM workspace_records WHERE project=? AND hash IN (${group.map(()=>'?').join(',')})`).bind(project,...group)));
+        for(const [index,result] of results.entries()){
+          if(result.results.length!==groups[index].length)throw Error('Missing durable archive record.');
+          for(const r of result.results){if(await sha256(r.data)!==r.hash)throw Error('Storage checksum failed.');add(r.hash,r.data);seen.add(r.hash);pending.push(...references(parseNode(r.data)));}
+        }
       }return data;
     }
     if(value?.storage_encoding==='wonderworks.workspace.gzip.v1'){
@@ -122,12 +127,23 @@ export async function captureArchive(db:D1Database,scope:string|'all',signal?:Ab
   return {manifest,records,fingerprint:await sha256(JSON.stringify(manifest))};
 }
 
+// Zip retains each added file until its directory is written. ZipDeflate keeps
+// a streaming compressor (including a 96 KiB input buffer) on every file, so
+// thousands of entries retain hundreds of MiB. Each bounded record is already
+// supplied in one chunk; synchronous per-entry deflation releases that state.
+class RecordZipDeflate extends ZipPassThrough {
+  compression=8;
+  protected process(chunk:Uint8Array,final:boolean){
+    if(!final)throw Error('Archive records must be encoded in one bounded chunk.');
+    this.ondata(null,deflateSync(chunk,{level:6}),true);
+  }
+}
 export function encodeArchive(archive:Archive,signal?:AbortSignal):ReadableStream<Uint8Array>{
   let zip:Zip,ended=false,compressed=0;
   const entries=[['manifest.json',JSON.stringify(archive.manifest)],...[...archive.records].map(([hash,data])=>['records/'+hash+'.json',data])];let index=0;
   return new ReadableStream({
     start(controller){zip=new Zip((error,data,final)=>{if(ended)return;if(error){ended=true;controller.error(error);return;}compressed+=data.length;if(compressed>ARCHIVE_LIMITS.compressed){ended=true;zip.terminate();controller.error(Error('Compressed archive exceeds 32 MiB. Export fewer projects.'));return;}controller.enqueue(data);if(final){ended=true;controller.close();}});},
-    pull(controller){try{checkAbort(signal);if(index<entries.length){const [name,data]=entries[index++],file=new ZipDeflate(name,{level:6});zip.add(file);file.push(bytes(data),true);}else zip.end();}catch(error){ended=true;zip.terminate();controller.error(error);}},
+    pull(controller){try{checkAbort(signal);if(index<entries.length){const [name,data]=entries[index++],file=new RecordZipDeflate(name);zip.add(file);file.push(bytes(data),true);}else zip.end();}catch(error){ended=true;zip.terminate();controller.error(error);}},
     cancel(){ended=true;zip.terminate();}
   });
 }

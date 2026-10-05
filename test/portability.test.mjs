@@ -133,6 +133,29 @@ test('large incompressible payload, multiple projects, legacy absence and cancel
   const copied=await sqlite('large-target');databases.push(copied);await importArchive(copied,decoded,a.manifest.projects.map(p=>({id:p.id,mode:'restore'})),'large-operator','large-atomic-batch');assert.equal((await new McpStore(copied).list()).length,2);assert.equal((await new McpStore(copied).read(doc.id)).future_blob,doc.future_blob);
 });
 
+test('archive capture batches reads and verifies shared historical records once per project',async()=>{
+  const db=await sqlite('capture-history');databases.push(db);const doc=workspace('capture-a');
+  doc.retained_payload=Array.from({length:1500},(_,i)=>({id:i,source:'Saved historical record '+i+' '+ 'source '.repeat(100)}));
+  let stored;
+  for(let version=0;version<8;version++){
+    doc.version=version;stored=await prepareStoredRecord(db,doc.id,doc);
+    await db.prepare('INSERT INTO workspace_storage_versions(project,version,data,sha256,legacy_data,created_at) VALUES(?,?,?,?,?,?)').bind(doc.id,version,stored.data,stored.sha256,null,'2026-10-05T00:00:00.000Z').run();
+  }
+  await db.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,?)').bind(doc.id,stored.data,doc.version).run();
+  const requested=[];let batches=0;
+  const remote={prepare:sql=>({...db.prepare(sql),bind:(...args)=>{if(sql.startsWith('SELECT hash,data FROM workspace_records'))requested.push(...args.slice(1));return db.prepare(sql).bind(...args);}}),batch:statements=>{batches++;return db.batch(statements);}};
+  const archive=await captureArchive(remote,'all');
+  assert.equal(requested.length,new Set(requested).size,'Shared records must not be fetched again for each historical version.');
+  assert.ok(batches<30,`Capture made ${batches} database round trips`);
+  assert.deepEqual(archiveWorkspace(archive,archive.manifest.projects[0]),doc);
+  await decode(await compressed(archive));
+  const other={...doc,id:'capture-b'},otherStored=await prepareStoredRecord(db,other.id,other);
+  await db.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,?)').bind(other.id,otherStored.data,other.version).run();
+  const shared=await db.prepare('SELECT hash FROM workspace_records GROUP BY hash HAVING COUNT(DISTINCT project)>1 LIMIT 1').first();
+  await db.prepare('DELETE FROM workspace_records WHERE project=? AND hash=?').bind(other.id,shared.hash).run();
+  await assert.rejects(()=>captureArchive(db,'all'),/Missing durable archive record/);
+});
+
 test('PostgreSQL independent pools, transactional receipts, restart and SQLite ↔ PostgreSQL transfer',{skip:!process.env.WW_TEST_POSTGRES_URL},async()=>{
   const config={profile:'self-hosted',databaseUrl:process.env.WW_TEST_POSTGRES_URL,tls:'disable'},a=await openDatabase(config),b=await openDatabase(config);databases.push(a,b);await migrate(a);await migrate(b);
   const source=await sqlite('postgres-source');databases.push(source);const doc=workspace('postgres-'+crypto.randomUUID());apply(doc);await source.prepare('INSERT INTO workspaces(id,data,version) VALUES(?,?,?)').bind(doc.id,JSON.stringify(doc),doc.version).run();

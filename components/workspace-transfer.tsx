@@ -15,7 +15,7 @@ export function WorkspaceTransfer({project,onOpenProject}:{project:string;onOpen
     try{
       if(action==='export'){
         replaceDownload('');
-        const r=await fetch('/api/workspace-archive?scope='+encodeURIComponent(scope==='all'?'all':project),{signal:abort.signal,cache:'no-store'});if(!r.ok)throw Error(((await r.json()) as {error?:string}).error??'Export failed.');
+        const r=await fetch('/api/workspace-archive?scope='+encodeURIComponent(scope==='all'?'all':project),{signal:abort.signal,cache:'no-store'});if(!r.ok){const failure=r.headers.get('content-type')?.includes('application/json')?await r.json() as {error?:string}:null;throw Error(failure?.error??`Workspace export failed (HTTP ${r.status}). Please retry.`);}
         const reader=r.body?.getReader();if(!reader)throw Error('Download unavailable.');const chunks:Uint8Array[]=[];let count=0;
         while(true){const {done,value}=await reader.read();if(done)break;count+=value.length;if(count>32*1024*1024){await reader.cancel();throw Error('Archive exceeds 32 MiB.');}chunks.push(value);setMessage(`Downloading ${(count/1024/1024).toFixed(1)} MiB…`);}
         setMessage('Checking archive download…');
