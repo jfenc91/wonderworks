@@ -57,3 +57,6 @@ next-env.d.ts
 !/.env.example
 *.operation
 *.partial
+
+# Workspace snapshots explicitly checked into this repository
+!/snapshots/*.wwspace
