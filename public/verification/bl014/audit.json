@@ -1,0 +1,178 @@
+{
+  "accepted-a4": {
+    "pages": 154,
+    "links": 30,
+    "destinations": 113,
+    "fonts": [
+      "/CZZZZZ+NotoSans-Regular",
+      "/DZZZZZ+NotoSans-Bold",
+      "/EZZZZZ+NotoSans-Italic",
+      "/FZZZZZ+NotoSansMono-Regular",
+      "/HZZZZZ+NotoSansCJKsc-Regular",
+      "/IZZZZZ+NotoEmoji-Regular"
+    ],
+    "tags": {
+      "/Document": 1,
+      "/Sect": 103,
+      "/H1": 4,
+      "/Span": 6160,
+      "/H2": 102,
+      "/P": 562,
+      "/TOC": 1,
+      "/TOCI": 2,
+      "/Link": 30,
+      "/H3": 214,
+      "/L": 101,
+      "/LI": 201,
+      "/Lbl": 201,
+      "/LBody": 201,
+      "/Table": 102,
+      "/TR": 402,
+      "/TH": 208,
+      "/TD": 604,
+      "/Code": 1,
+      "/Caption": 1,
+      "/Figure": 10
+    },
+    "all_pages_rendered": true,
+    "layout_bound_violations": [],
+    "contact_sheets": [
+      "outputs/pdf/accepted-a4-contact-1.jpg",
+      "outputs/pdf/accepted-a4-contact-2.jpg",
+      "outputs/pdf/accepted-a4-contact-3.jpg",
+      "outputs/pdf/accepted-a4-contact-4.jpg"
+    ]
+  },
+  "accepted-letter": {
+    "pages": 165,
+    "links": 30,
+    "destinations": 113,
+    "fonts": [
+      "/CZZZZZ+NotoSans-Regular",
+      "/DZZZZZ+NotoSans-Bold",
+      "/EZZZZZ+NotoSans-Italic",
+      "/FZZZZZ+NotoSansMono-Regular",
+      "/HZZZZZ+NotoSansCJKsc-Regular",
+      "/IZZZZZ+NotoEmoji-Regular"
+    ],
+    "tags": {
+      "/Document": 1,
+      "/Sect": 103,
+      "/H1": 4,
+      "/Span": 6164,
+      "/H2": 102,
+      "/P": 564,
+      "/TOC": 1,
+      "/TOCI": 2,
+      "/Link": 30,
+      "/H3": 214,
+      "/L": 101,
+      "/LI": 201,
+      "/Lbl": 201,
+      "/LBody": 201,
+      "/Table": 102,
+      "/TR": 402,
+      "/TH": 208,
+      "/TD": 604,
+      "/Code": 1,
+      "/Caption": 1,
+      "/Figure": 10
+    },
+    "all_pages_rendered": true,
+    "layout_bound_violations": [],
+    "contact_sheets": [
+      "outputs/pdf/accepted-letter-contact-1.jpg",
+      "outputs/pdf/accepted-letter-contact-2.jpg",
+      "outputs/pdf/accepted-letter-contact-3.jpg",
+      "outputs/pdf/accepted-letter-contact-4.jpg"
+    ]
+  },
+  "snapshot-a4": {
+    "pages": 154,
+    "links": 30,
+    "destinations": 113,
+    "fonts": [
+      "/CZZZZZ+NotoSans-Regular",
+      "/DZZZZZ+NotoSans-Bold",
+      "/EZZZZZ+NotoSans-Italic",
+      "/FZZZZZ+NotoSansMono-Regular",
+      "/HZZZZZ+NotoSansCJKsc-Regular",
+      "/IZZZZZ+NotoEmoji-Regular"
+    ],
+    "tags": {
+      "/Document": 1,
+      "/Sect": 103,
+      "/H1": 4,
+      "/Span": 6164,
+      "/H2": 102,
+      "/P": 565,
+      "/TOC": 1,
+      "/TOCI": 2,
+      "/Link": 30,
+      "/H3": 214,
+      "/L": 101,
+      "/LI": 201,
+      "/Lbl": 201,
+      "/LBody": 201,
+      "/Table": 102,
+      "/TR": 402,
+      "/TH": 208,
+      "/TD": 604,
+      "/Code": 1,
+      "/Caption": 1,
+      "/Figure": 10
+    },
+    "all_pages_rendered": true,
+    "layout_bound_violations": [],
+    "contact_sheets": [
+      "outputs/pdf/snapshot-a4-contact-1.jpg",
+      "outputs/pdf/snapshot-a4-contact-2.jpg",
+      "outputs/pdf/snapshot-a4-contact-3.jpg",
+      "outputs/pdf/snapshot-a4-contact-4.jpg"
+    ]
+  },
+  "snapshot-letter": {
+    "pages": 165,
+    "links": 30,
+    "destinations": 113,
+    "fonts": [
+      "/CZZZZZ+NotoSans-Regular",
+      "/DZZZZZ+NotoSans-Bold",
+      "/EZZZZZ+NotoSans-Italic",
+      "/FZZZZZ+NotoSansMono-Regular",
+      "/HZZZZZ+NotoSansCJKsc-Regular",
+      "/IZZZZZ+NotoEmoji-Regular"
+    ],
+    "tags": {
+      "/Document": 1,
+      "/Sect": 103,
+      "/H1": 4,
+      "/Span": 6167,
+      "/H2": 102,
+      "/P": 567,
+      "/TOC": 1,
+      "/TOCI": 2,
+      "/Link": 30,
+      "/H3": 214,
+      "/L": 101,
+      "/LI": 201,
+      "/Lbl": 201,
+      "/LBody": 201,
+      "/Table": 102,
+      "/TR": 402,
+      "/TH": 208,
+      "/TD": 604,
+      "/Code": 1,
+      "/Caption": 1,
+      "/Figure": 10
+    },
+    "all_pages_rendered": true,
+    "layout_bound_violations": [],
+    "contact_sheets": [
+      "outputs/pdf/snapshot-letter-contact-1.jpg",
+      "outputs/pdf/snapshot-letter-contact-2.jpg",
+      "outputs/pdf/snapshot-letter-contact-3.jpg",
+      "outputs/pdf/snapshot-letter-contact-4.jpg"
+    ]
+  }
+}

@@ -38,7 +38,7 @@ export function parseMermaid(source:string):DiagramGraph{
   if(g.type==='sequence'){
    const p=line.match(/^(?:participant|actor)\s+([\w-]+)(?:\s+as\s+(.+))?$/);
    if(p){node(p[1],p[2]);continue;}
-   const e=line.match(/^([\w-]+)\s*(--?>>|--?>|--?x|--?\))\s*([\w-]+)\s*:\s*(.+)$/);
+   const e=line.match(/^([\w-]+?)\s*(--?>>|--?>|--?x|--?\))\s*([\w-]+)\s*:\s*(.+)$/);
    if(!e)fail('Unsupported sequence statement: '+line.slice(0,100));g.edges.push({from:node(e[1]),to:node(e[3]),label:e[4],dashed:e[2].startsWith('--')});limited(g);continue;
   }
   const sub=line.match(/^subgraph\s+([\w-]+)(?:\s*\[([^\]]+)\])?$/);

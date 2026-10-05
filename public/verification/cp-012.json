@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "proposal_id": "CP-012",
+  "baseline_id": "BL-014",
+  "requirements_version": 14,
+  "verified_at": "2026-10-05T04:15:44.945317+00:00",
+  "requirements": [
+    {
+      "id": "WW-099",
+      "revision": 1
+    },
+    {
+      "id": "WW-100",
+      "revision": 1
+    },
+    {
+      "id": "WW-101",
+      "revision": 1
+    },
+    {
+      "id": "WW-102",
+      "revision": 1
+    },
+    {
+      "id": "WW-103",
+      "revision": 1
+    },
+    {
+      "id": "WW-104",
+      "revision": 1
+    },
+    {
+      "id": "WW-105",
+      "revision": 1
+    },
+    {
+      "id": "WW-106",
+      "revision": 1
+    },
+    {
+      "id": "WW-107",
+      "revision": 1
+    },
+    {
+      "id": "WW-108",
+      "revision": 1
+    }
+  ],
+  "summary": "PDF specification download implementation with passing automated checks and an explicit outstanding manual reader/assistive-technology verification gap.",
+  "checks": [
+    {
+      "id": "WW-099",
+      "title": "Complete A4 and Letter download controls",
+      "passed": true,
+      "detail": "r1: accepted and older snapshot PDF downloads completed through Chromium user controls, despite a search filter. Information-only and empty-source capture paths checked. Markdown and JSON paths retained."
+    },
+    {
+      "id": "WW-100",
+      "title": "Coherent saved contexts",
+      "passed": true,
+      "detail": "r1: immutable capture excludes staged values; older snapshot output retains frozen body/section/status fields after current edits. Unit checks retain unknown legacy version and isolate copies."
+    },
+    {
+      "id": "WW-101",
+      "title": "Complete rich content and supporting fields",
+      "passed": true,
+      "detail": "r1: 100-item fixture, literal 50,000-code-point body, Markdown/HTML/code/tables, all criteria, parameters, tags, dependencies and ten summary sources passed text checks. Main inline-reading regressions passed."
+    },
+    {
+      "id": "WW-102",
+      "title": "Paginated layout and page images",
+      "passed": true,
+      "detail": "r1: A4 154 pages and Letter 165 pages for each accepted/snapshot fixture. Every page rendered; full contact sheets and representative detailed pages inspected. Text bounds checks passed; wide column bands and tall-row continuations retain headers. Body 11pt, secondary >=9pt, line spacing 1.4, margins 46pt."
+    },
+    {
+      "id": "WW-103",
+      "title": "PDF navigation",
+      "passed": true,
+      "detail": "r1: 30 link annotations per sample resolve to safe external targets or valid named PDF destinations; contents, section/item outlines, dependency/source and figure/detail links are included."
+    },
+    {
+      "id": "WW-104",
+      "title": "Vector figures and explicit fallback",
+      "passed": true,
+      "detail": "r1: Mermaid flowchart/sequence/state and grouped/directed/undirected DOT rendered; large graph uses linked overview and four overlapping readable details. Legacy failure and oversized figure tests preserve full source and identify item/block warnings."
+    },
+    {
+      "id": "WW-105",
+      "title": "Searchable text and structural accessibility checks",
+      "passed": true,
+      "detail": "r1: pypdf checks Unicode extraction, embedded subsets with ToUnicode, language/title, heading/list/table/link/figure tags, column-header scope, figure alternatives, annotation structure references and unrestricted offline file contents. This automated result does not assert a screen-reader or PDF/UA certification pass."
+    },
+    {
+      "id": "WW-106",
+      "title": "Local read-only generation and safe content",
+      "passed": true,
+      "detail": "r1: no external conversion service or generation endpoint; allowlisted HTML/SVG reused, safe credential-free HTTP(S) links only, source-context-scoped bounded SVG cache. Tests confirm no authored external fetch and unchanged workspace records after generation, cancellation and failures."
+    },
+    {
+      "id": "WW-107",
+      "title": "Progress, cancellation and recovery",
+      "passed": true,
+      "detail": "r1: accessible Preparing/Ready/warning/failure states, duplicate activation, cancellation, font failure, 120-second deadline, project switching, blocked automatic download and Download again exercised. Unit checks reject empty/oversized input and oversized figures retain source."
+    },
+    {
+      "id": "WW-108",
+      "title": "Complete release verification matrix",
+      "passed": false,
+      "detail": "r1: automated download/text/structure/layout and regression checks passed. Native Preview inspection was attempted twice but computer access timed out (-10005). Desktop-reader/assistive-technology interaction, PDF keyboard navigation in a reader, and physical/grayscale print-preview checks remain unexecuted. Do not treat these as passing."
+    }
+  ],
+  "executed": {
+    "unit_and_api_tests": 157,
+    "browser_tests": 21,
+    "typecheck": "passed",
+    "targeted_lint": "passed",
+    "pdf_audit": "passed",
+    "browser": "Chromium 154.0.8037.58",
+    "renderers": [
+      "PDFium 153.0.7999.0 via pypdfium2 5.13.0",
+      "MuPDF 1.28.2 (representative independent page check)"
+    ]
+  },
+  "artifacts": {
+    "samples": [
+      "/verification/bl014/accepted-a4.pdf",
+      "/verification/bl014/accepted-letter.pdf",
+      "/verification/bl014/snapshot-a4.pdf",
+      "/verification/bl014/snapshot-letter.pdf",
+      "/verification/bl014/legacy-fallback.pdf",
+      "/verification/bl014/information-only.pdf"
+    ],
+    "structure_and_layout": "/verification/bl014/audit.json",
+    "representative_contact_sheets": [
+      "/verification/bl014/accepted-a4-contact-1.jpg",
+      "/verification/bl014/accepted-letter-contact-1.jpg",
+      "/verification/bl014/snapshot-a4-contact-1.jpg",
+      "/verification/bl014/snapshot-letter-contact-1.jpg"
+    ]
+  },
+  "limits": [
+    "Synthetic fixtures and local loopback D1 were used; production project content was not altered by testing.",
+    "All 638 layout pages were rendered locally. Full page PNGs and contact sheets remain under outputs/pdf; representative contact sheets accompany the published evidence.",
+    "Source capture and snapshot comparisons use MCP readback. Lifecycle/evidence changes are distinct from implementation assertions.",
+    "Unexecuted native-reader and assistive checks are retained as an incomplete WW-108 result."
+  ]
+}
