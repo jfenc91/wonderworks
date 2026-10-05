@@ -1,9 +1,10 @@
 import type {Workspace} from '../lib/types';
 import {ToolError} from '../lib/mcp/errors';
-import {readStoredRecord,prepareStoredRecord,prepareWorkspaceCommit} from './workspace-records';
+import {readStoredRecord,prepareStoredRecord,prepareWorkspaceCommit,StoredRecordSession} from './workspace-records';
 
 export type Receipt={key:string;project:string;fingerprint:string;result:Record<string,unknown>;expiresAt:number};
 export class McpStore {
+  private reads=new WeakMap<Workspace,StoredRecordSession>();
   constructor(private binding:D1Database|undefined){}
   private get db(){if(!this.binding)throw Error('Workspace storage unavailable');return this.binding;}
   async list(){
@@ -13,8 +14,9 @@ export class McpStore {
   async read(id:string):Promise<Workspace>{
     const row=await this.db.prepare('SELECT data,version FROM workspaces WHERE id=?').bind(id).first<{data:string;version:number}>();
     if(!row)throw new ToolError('NOT_FOUND','Project not found or unavailable.');
-    const doc=await readStoredRecord<Workspace>(this.db,id,row.data);
-    return {...doc,id,version:row.version,requirementsVersion:doc.requirementsVersion??1,repositories:doc.repositories??[],proposals:doc.proposals??[]};
+    const records=new StoredRecordSession(this.db,id),stored=await readStoredRecord<Workspace>(this.db,id,row.data,records);
+    const doc={...stored,id,version:row.version,requirementsVersion:stored.requirementsVersion??1,repositories:stored.repositories??[],proposals:stored.proposals??[]};
+    this.reads.set(doc,records);return doc;
   }
   async replay(key:string,fingerprint:string,now:number){
     const row=await this.db.prepare('SELECT project,fingerprint,result FROM mcp_receipts WHERE key=? AND expires_at>?').bind(key,now).first<{project:string;fingerprint:string;result:string}>();
@@ -29,8 +31,9 @@ export class McpStore {
     // but keeps the workspace version and its metadata timestamps unchanged.
     try{
       const nextDoc={...doc,version:expected+(unchanged?0:1)};
-      const prepared=await prepareWorkspaceCommit(this.db,doc.id,expected,nextDoc);
-      const storedResult=await prepareStoredRecord(this.db,doc.id,receipt.result);
+      const records=this.reads.get(doc)??new StoredRecordSession(this.db,doc.id);
+      const prepared=await prepareWorkspaceCommit(this.db,doc.id,expected,nextDoc,records);
+      const storedResult=await prepareStoredRecord(this.db,doc.id,receipt.result,records);
       const results=await this.db.batch([
         this.db.prepare('DELETE FROM mcp_receipts WHERE expires_at<=?').bind(now),
         this.db.prepare('INSERT INTO mcp_receipts (key,project,fingerprint,result,expires_at) SELECT ?,?,?,?,? FROM workspaces WHERE id=? AND version=?')

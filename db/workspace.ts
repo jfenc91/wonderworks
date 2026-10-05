@@ -1,7 +1,8 @@
 import {env} from 'cloudflare:workers';
 import seed from '@/data/workspace.json';
 import type {Workspace} from '@/lib/types';
-import {readStoredRecord,prepareStoredRecord,prepareWorkspaceCommit} from './workspace-records';
+import {readStoredRecord,prepareStoredRecord,prepareWorkspaceCommit,StoredRecordSession} from './workspace-records';
+const reads=new WeakMap<Workspace,StoredRecordSession>();
 function database(){if(!env.DB)throw new Error('Workspace storage is unavailable');return env.DB;}
 async function ensureSeed(db:D1Database){await db.prepare('INSERT OR IGNORE INTO workspaces (id,data,version) VALUES (?,?,?)').bind('asteroids',JSON.stringify(seed),seed.version).run();}
 // Version polling and project selectors need only the small root envelope.
@@ -10,11 +11,12 @@ export async function readWorkspace(id='asteroids'):Promise<Workspace>{
  const db=database();
  await ensureSeed(db);
  const row=await db.prepare('SELECT data,version FROM workspaces WHERE id=?').bind(id).first<{data:string;version:number}>();if(!row)throw new Error('Workspace not found');
- const d=await readStoredRecord<Workspace>(db,id,row.data);
- return {...d,id,prefix:d.prefix??'AST',baselines:d.baselines??[],evidence:d.evidence??[],repositories:d.repositories??[],proposals:d.proposals??[],requirementsVersion:d.requirementsVersion??1,version:row.version};
+ const records=new StoredRecordSession(db,id),d=await readStoredRecord<Workspace>(db,id,row.data,records);
+ const doc={...d,id,prefix:d.prefix??'AST',baselines:d.baselines??[],evidence:d.evidence??[],repositories:d.repositories??[],proposals:d.proposals??[],requirementsVersion:d.requirementsVersion??1,version:row.version};
+ reads.set(doc,records);return doc;
 }
 export async function saveWorkspace(doc:Workspace,expected:number){
- const db=database(),next={...doc,version:expected+1},prepared=await prepareWorkspaceCommit(db,doc.id,expected,next);
+ const db=database(),next={...doc,version:expected+1},prepared=await prepareWorkspaceCommit(db,doc.id,expected,next,reads.get(doc));
  const results=await db.batch([prepared.backup,
   db.prepare('INSERT OR IGNORE INTO workspace_storage_versions(project,version,data,sha256,created_at) SELECT ?,?,?,?,? FROM workspaces WHERE id=? AND version=?').bind(doc.id,next.version,prepared.next.data,prepared.next.sha256,new Date().toISOString(),doc.id,expected),
   db.prepare('UPDATE workspaces SET data=?,version=? WHERE id=? AND version=?').bind(prepared.next.data,next.version,doc.id,expected)
