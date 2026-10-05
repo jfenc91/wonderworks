@@ -2,6 +2,10 @@ import type {Workspace} from './types';
 
 export const CHECK_INTERVAL = 1500;
 export const MAX_RETRY_INTERVAL = 30000;
+// Both initial loads and changed-version polls can return the complete project,
+// including its retained history. Give those downloads a bounded, realistic
+// deadline without slowing the cadence of successful unchanged checks.
+export const WORKSPACE_READ_TIMEOUT = 30000;
 export type SyncState = {phase:'connecting'|'current'|'reconnecting'|'offline'|'blocked';lastSuccess:number|null;message:string};
 export class AccessRequired extends Error {}
 export function retryDelay(failures:number,random=Math.random){
@@ -55,7 +59,7 @@ export class WorkspaceSync {
     if(this.options.online?.()===false){this.failures++;this.state('offline','Offline. Displayed data may be stale.');return;}
     if(this.options.visible?.()===false)return;
     const abort=new AbortController();this.abort=abort;
-    const timeout=setTimeout(()=>abort.abort(),4000);
+    const timeout=setTimeout(()=>abort.abort(),WORKSPACE_READ_TIMEOUT);
     if(!this.doc)this.state('connecting');
     try{
       const query=new URLSearchParams({project:this.project,...(this.doc?{since:String(this.doc.version)}:{})});

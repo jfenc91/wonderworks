@@ -56,8 +56,28 @@ test('missing or corrupted records fail closed instead of returning partial data
  await assert.rejects(()=>readStoredRecord(db,value.id,stored.data),/integrity/);
  await db.prepare('DELETE FROM workspace_records WHERE project=? AND hash=?').bind(value.id,root).run();await assert.rejects(()=>readStoredRecord(db,value.id,stored.data),/Missing/);
 }));
+test('large record trees load with bounded remote round trips and preserve shared snapshots',async()=>harness(async db=>{
+ const requirements=Array.from({length:1500},(_,i)=>({id:'R-'+i,source:'Requirement '+i+' '+ 'retained content '.repeat(100)}));
+ const value={id:'large-read',requirements,baselines:[{requirements:structuredClone(requirements)}]};
+ const stored=await prepareStoredRecord(db,value.id,value);
+ let roundTrips=0;
+ const remote={
+  prepare:sql=>({bind:(...args)=>{
+   const bound=db.prepare(sql).bind(...args);
+   return new Proxy(bound,{get(target,key){if(key==='all')return async()=>{roundTrips++;return target.all();};return Reflect.get(target,key);}});
+  }}),
+  batch:async statements=>{roundTrips++;return db.batch(statements);}
+ };
+ const loaded=await readStoredRecord(remote,value.id,stored.data);
+ assert.deepEqual(loaded,value);
+ assert.ok(roundTrips<=15,'Large-project reads must not perform dozens of sequential network round trips: '+roundTrips);
+ loaded.requirements[0].source='Edited';assert.equal(loaded.baselines[0].requirements[0].source,requirements[0].source);
+}));
 if(process.env.WORKSPACE_BACKUP_PATH)test('production backup survives migration, restart, proposal write, and receipt replay with all frozen records intact',async()=>harness(async(db,restart)=>{
- const doc=JSON.parse(await readFile(process.env.WORKSPACE_BACKUP_PATH,'utf8'));const raw=await encodeWorkspace(doc);
+ const doc=JSON.parse(await readFile(process.env.WORKSPACE_BACKUP_PATH,'utf8'));const encoded=await encodeWorkspace(doc);
+ // New production backups can exceed the legacy cell limit even compressed.
+ // Seed those in the current format, just as they exist in production.
+ const raw=Buffer.byteLength(encoded)>1_900_000?(await prepareStoredRecord(db,doc.id,doc)).data:encoded;
  await db.prepare('INSERT INTO workspaces VALUES(?,?,?)').bind(doc.id,raw,doc.version).run();
  const beforeHash=await sha256(JSON.stringify(doc));const result=await migrateWorkspaceStorage(db,doc.id,doc.version);assert.equal(result.sha256,beforeHash);
  let store=new McpStore(db);assert.deepEqual(await store.read(doc.id),doc);

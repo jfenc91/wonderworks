@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WorkspaceSync,retryDelay,newerWorkspace} from '../lib/workspace-sync.ts';
+import {WorkspaceSync,retryDelay,newerWorkspace,WORKSPACE_READ_TIMEOUT} from '../lib/workspace-sync.ts';
 const doc=(version,id='a')=>({id,version,requirementsVersion:1,requirements:[],proposals:[],history:[]});
 const response=value=>Response.json(value);
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
@@ -45,4 +45,34 @@ test('backoff is jittered and bounded to thirty seconds',()=>{
 test('access denial cancels an earlier read and cannot be undone by its late response',async()=>{
   const pending=deferred();const {sync,states}=setup(()=>pending.promise);
   try{sync.accept(doc(1));const read=sync.refresh();sync.deny();pending.resolve(response(doc(9)));await read;assert.equal(sync.current.version,1);assert.equal(states.at(-1).phase,'blocked');assert.equal(sync.accept(doc(10)),false);}finally{sync.stop();}
+});
+test('large initial loads and changed-version downloads survive the former four-second deadline',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  for(const initial of [true,false]){
+    const headers=deferred(),body=deferred();let signal;
+    const {sync,states}=setup(async(_url,options)=>{signal=options.signal;await headers.promise;return {status:200,ok:true,headers:new Headers({'content-type':'application/json'}),json:()=>body.promise};});
+    try{
+      if(!initial)sync.accept(doc(1));
+      const pending=sync.refresh();t.mock.timers.tick(5000);assert.equal(signal.aborted,false);
+      headers.resolve();await Promise.resolve();await Promise.resolve();
+      t.mock.timers.tick(5000);assert.equal(signal.aborted,false);
+      body.resolve(doc(2));await pending;
+      assert.equal(sync.current.version,2);assert.equal(states.at(-1).phase,'current');
+    }finally{sync.stop();}
+  }
+});
+test('a stalled response body still times out, retains saved data and permits recovery',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  let fail=true,signal;
+  const {sync,states}=setup(async(_url,options)=>{
+    signal=options.signal;
+    return fail?{status:200,ok:true,headers:new Headers({'content-type':'application/json'}),json:()=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(Error('aborted')),{once:true}))}:response(doc(3));
+  });
+  try{
+    sync.accept(doc(1));const pending=sync.refresh();await Promise.resolve();await Promise.resolve();
+    t.mock.timers.tick(WORKSPACE_READ_TIMEOUT);await pending;
+    assert.equal(signal.aborted,true);assert.equal(sync.current.version,1);
+    assert.equal(states.at(-1).phase,'reconnecting');assert.match(states.at(-1).message,/timed out/);
+    fail=false;await sync.refresh();assert.equal(sync.current.version,3);assert.equal(states.at(-1).phase,'current');
+  }finally{sync.stop();}
 });

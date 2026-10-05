@@ -5,6 +5,10 @@ import {decodeStoredRecord} from './workspace-codec';
 // property order and unknown/legacy fields. Identical content is shared on disk.
 export const RECORD_ENCODING='wonderworks.workspace.records.v2';
 const LEAF_BYTES=32_000,MAX_ROW_BYTES=65_536,FANOUT=128;
+// Bound each SQL result and each D1 round trip independently. A large project
+// can reference thousands of records; awaiting every query serially adds a
+// network round trip for each 24 records.
+const READ_QUERY_SIZE=24,READ_BATCH_QUERIES=8;
 type Node={type:'value';value:unknown}|{type:'object';entries:[string,string][]}|
   {type:'array'|'arrays'|'objects'|'text';items:string[]};
 type Pointer={storage_encoding:typeof RECORD_ENCODING;name?:string;root:string};
@@ -67,12 +71,17 @@ export async function readStoredRecord<T>(db:D1Database,project:string,data:stri
   // captured with the workspace version, so concurrent commits cannot mix sets.
   while(pending.length){
     const hashes=[...new Set(pending)].filter(h=>!nodes.has(h));pending=[];
-    for(let i=0;i<hashes.length;i+=24){
-      const batch=hashes.slice(i,i+24),rows=await db.prepare(`SELECT hash,data FROM workspace_records WHERE project=? AND hash IN (${batch.map(()=>'?').join(',')})`).bind(project,...batch).all<{hash:string;data:string}>();
-      if(rows.results.length!==batch.length)throw Error('Missing storage record; workspace was not loaded');
-      for(const row of rows.results){
-        if(await sha256(row.data)!==row.hash)throw Error('Storage integrity check failed');
-        const node=parseNode(row.data);nodes.set(row.hash,node);pending.push(...references(node));
+    for(let i=0;i<hashes.length;i+=READ_QUERY_SIZE*READ_BATCH_QUERIES){
+      const groups=[];
+      for(let j=i;j<Math.min(i+READ_QUERY_SIZE*READ_BATCH_QUERIES,hashes.length);j+=READ_QUERY_SIZE)groups.push(hashes.slice(j,j+READ_QUERY_SIZE));
+      const results=await db.batch<{hash:string;data:string}>(groups.map(group=>db.prepare(`SELECT hash,data FROM workspace_records WHERE project=? AND hash IN (${group.map(()=>'?').join(',')})`).bind(project,...group)));
+      for(const [index,rows] of results.entries()){
+        if(rows.results.length!==groups[index].length)throw Error('Missing storage record; workspace was not loaded');
+        const verified=await Promise.all(rows.results.map(async row=>{
+          if(await sha256(row.data)!==row.hash)throw Error('Storage integrity check failed');
+          return {hash:row.hash,node:parseNode(row.data)};
+        }));
+        for(const {hash,node} of verified){nodes.set(hash,node);pending.push(...references(node));}
       }
     }
   }

@@ -3,11 +3,12 @@ import seed from '@/data/workspace.json';
 import type {Workspace} from '@/lib/types';
 import {readStoredRecord,prepareStoredRecord,prepareWorkspaceCommit} from './workspace-records';
 function database(){if(!env.DB)throw new Error('Workspace storage is unavailable');return env.DB;}
+async function ensureSeed(db:D1Database){await db.prepare('INSERT OR IGNORE INTO workspaces (id,data,version) VALUES (?,?,?)').bind('asteroids',JSON.stringify(seed),seed.version).run();}
 // Version polling and project selectors need only the small root envelope.
 export async function readWorkspaceVersion(id:string){return (await database().prepare('SELECT version FROM workspaces WHERE id=?').bind(id).first<{version:number}>())?.version??null;}
 export async function readWorkspace(id='asteroids'):Promise<Workspace>{
  const db=database();
- await db.prepare('INSERT OR IGNORE INTO workspaces (id,data,version) VALUES (?,?,?)').bind('asteroids',JSON.stringify(seed),seed.version).run();
+ await ensureSeed(db);
  const row=await db.prepare('SELECT data,version FROM workspaces WHERE id=?').bind(id).first<{data:string;version:number}>();if(!row)throw new Error('Workspace not found');
  const d=await readStoredRecord<Workspace>(db,id,row.data);
  return {...d,id,prefix:d.prefix??'AST',baselines:d.baselines??[],evidence:d.evidence??[],repositories:d.repositories??[],proposals:d.proposals??[],requirementsVersion:d.requirementsVersion??1,version:row.version};
@@ -20,7 +21,7 @@ export async function saveWorkspace(doc:Workspace,expected:number){
  ]);
  if(results.at(-1)!.meta.changes!==1)throw Error('CONFLICT');return next;
 }
-export async function listWorkspaces(){await readWorkspace();const rows=await database().prepare('SELECT id,data FROM workspaces').all<{id:string;data:string}>();return rows.results.map(r=>({id:r.id,name:JSON.parse(r.data).name}));}
+export async function listWorkspaces(){const db=database();await ensureSeed(db);const rows=await db.prepare('SELECT id,data FROM workspaces').all<{id:string;data:string}>();return rows.results.map(r=>({id:r.id,name:JSON.parse(r.data).name}));}
 export async function createWorkspace(name:string,prefix:string){
  const id=crypto.randomUUID(),db=database();
  const doc:Workspace={id,prefix,name,version:0,requirementsVersion:1,repositories:[],proposals:[],sections:[],requirements:[],baselines:[],evidence:[],history:[{id:crypto.randomUUID(),date:new Date().toISOString(),message:'Project created · '+name}]};
