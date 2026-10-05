@@ -19,7 +19,7 @@ test('workspace export, preview, copy and preserved review workflows through Chr
     // Sites emulator uses its own cookie; standalone local mode is explicit.
     await page.goto(origin+'/signin-with-chatgpt?return_to=/');await page.goto(origin);
     await page.getByRole('combobox',{name:'Current project'}).click();await page.getByRole('option',{name:doc.name,exact:true}).click();
-    await page.getByRole('button',{name:'Workspace backup & import',exact:true}).click();const dialog=page.getByRole('dialog');
+    await page.getByRole('tab',{name:'Settings',exact:true}).click();const dialog=page.getByRole('region',{name:'Workspace backup & import',exact:true});
     await dialog.getByLabel('Export workspace scope').selectOption('current');const downloaded=page.waitForEvent('download');await dialog.getByRole('button',{name:'Export workspace',exact:true}).click();const download=await downloaded;
     await mkdir('outputs/bl015-browser',{recursive:true});const file='outputs/bl015-browser/'+new URL(origin).port+'.wwspace';await download.saveAs(file);assert.ok((await readFile(file)).length>100);
     await dialog.getByText(/Ready: 1 workspace/).waitFor();await dialog.getByLabel('Workspace archive',{exact:true}).setInputFiles(file);await dialog.getByRole('button',{name:'Preview archive',exact:true}).click();

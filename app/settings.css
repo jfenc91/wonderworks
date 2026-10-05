@@ -1,0 +1,103 @@
+/* Settings keeps the existing charcoal and copper palette with quieter surfaces. */
+.settings-page {max-width:1120px;margin:0 auto;padding:32px 0 48px;display:grid;gap:24px;min-width:0}
+.settings-page-heading h2 {font-size:1.625rem;font-weight:500;letter-spacing:-.035em;line-height:1.3}
+.settings-page-heading p {margin-top:8px;color:#a4a8a7;font-size:1rem}
+.settings-card {border:1px solid var(--border);border-radius:12px;background:var(--card);min-width:0;overflow:hidden}
+.settings-card.workflow-panel {padding-bottom:0}
+.settings-card-header {display:flex;align-items:center;gap:14px;padding:24px;border-bottom:1px solid var(--border)}
+.settings-card-header>div {flex:1;min-width:0}
+.settings-card-header h3 {font-size:1.125rem;font-weight:550;letter-spacing:-.015em;line-height:1.4}
+.settings-card-header p {font-size:.875rem;color:#a5aaa8;margin-top:4px}
+.settings-icon {width:42px;height:42px;display:grid;place-items:center;flex-shrink:0;border:1px solid #52402f;border-radius:10px;background:#30271f;color:var(--primary)}
+.settings-badge {display:inline-flex;align-items:center;flex-shrink:0;border:1px solid #3b3f3e;border-radius:5px;padding:4px 8px;font-size:.75rem;color:#b1b7b4;line-height:1.5}
+.settings-page :is(.primary,.secondary,.ghost) {font-size:.875rem;min-height:42px;white-space:normal;text-align:center}
+.settings-page :is(input,select,textarea) {min-width:0;max-width:100%;font-size:.875rem}
+.settings-page :is(input,select,textarea):focus-visible {outline:2px solid var(--primary);outline-offset:3px}
+.settings-field {display:grid;gap:8px;font-size:.875rem;color:#d1d5d2;min-width:0}
+.settings-field select,.settings-page .guidance-form select {width:100%;min-height:44px;border:1px solid #414645;border-radius:6px;padding:10px 12px;background:#141718;color:var(--foreground)}
+.transfer-grid {display:grid;grid-template-columns:1fr 1fr}
+.transfer-action {padding:26px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.transfer-action+.transfer-action {border-left:1px solid var(--border)}
+.transfer-action-title {display:flex;align-items:center;gap:10px;color:#e9b18a}
+.transfer-action-title h4 {font-size:1rem;font-weight:550;color:var(--foreground)}
+.transfer-action>p:not(.transfer-note) {font-size:1rem;color:#b1b7b4;line-height:1.6}
+.transfer-actions {display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:auto}
+.transfer-download {font-size:.875rem;color:#e9b18a;text-decoration:underline;text-underline-offset:4px}
+.transfer-note {font-size:.875rem;color:#999f9c}
+.archive-file-picker {position:relative;display:flex;gap:12px;align-items:center;flex:1;min-height:80px;min-width:0;padding:16px;border:1px dashed #62645c;border-radius:8px;background:#1e2221;color:#cbb18f;cursor:pointer}
+.archive-file-picker:hover,.archive-file-picker:focus-within {border-color:var(--primary);background:#282621}
+.archive-file-picker:has(input:disabled) {opacity:.55;cursor:not-allowed}
+.archive-file-picker>svg {flex-shrink:0}
+.archive-file-picker>span {min-width:0}
+.archive-file-picker strong {display:block;overflow-wrap:anywhere;font-size:.875rem;color:#e3e6e0;font-weight:500}
+.archive-file-picker span span {display:block;font-size:.8125rem;color:#a6aca8;margin-top:4px}
+.archive-file-picker input {position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:inherit}
+.archive-file-picker.has-file {border-style:solid}
+.transfer-limits {display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:14px 24px;background:#17191a;border-top:1px solid var(--border);font-size:.8125rem;color:#9da59f;line-height:1.6}
+.transfer-limits span:first-child {display:flex;align-items:center;gap:8px}
+.archive-preview {border-top:1px solid var(--border);padding:24px}
+.archive-preview-heading {display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
+.archive-preview h4 {font-size:1rem;font-weight:550}
+.archive-preview-heading p {font-size:.875rem;color:#a6aca8;margin-top:6px}
+.archive-project-list {display:grid;gap:12px}
+.archive-project {display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,230px);gap:24px;align-items:center;padding:20px;border:1px solid #3d4340;border-radius:8px;background:#161b19}
+.archive-project-info {min-width:0;overflow-wrap:anywhere}
+.archive-project strong {font-size:1rem;font-weight:550}
+.archive-project p {font-size:.8125rem;color:#a2aca5;margin:6px 0}
+.archive-conflict {display:block;font-size:.875rem;color:#b6c5ba;margin-top:10px}
+.archive-conflict.is-conflict {color:#e5b68c}
+.archive-project details,.archive-identity {font-size:.8125rem;color:#a4afa7;margin-top:12px;overflow-wrap:anywhere}
+.archive-project summary,.archive-identity summary {cursor:pointer;list-style:revert}
+.archive-confirm {display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:20px;font-size:.875rem;color:#b4bdb6}
+.archive-warnings {list-style:disc;padding:0 0 16px 20px;font-size:.875rem;color:#e4b990}
+.transfer-feedback {display:grid;gap:16px;padding:20px 24px;border-top:1px solid var(--border)}
+.transfer-status {display:flex;align-items:flex-start;gap:10px;font-size:.875rem;color:#b9ceb9;overflow-wrap:anywhere;min-width:0}
+.transfer-status svg {flex-shrink:0;margin-top:3px}
+.transfer-feedback>button {justify-self:start}
+.transfer-results {display:flex;flex-wrap:wrap;gap:10px}
+.guidance-context {display:flex;justify-content:space-between;gap:16px;align-items:center;padding:20px 24px 0}
+.guidance-context p {font-size:.875rem;color:#a5aaa8;max-width:650px}
+.settings-page .guidance-form {max-width:none;margin:0;padding:24px;gap:20px}
+.guidance-field-pair {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.settings-page .guidance-form label {color:#d1d5d2}
+.settings-page .guidance-form :is(input,textarea) {background:#141718;border-color:#414645;color:var(--foreground)}
+.settings-page .guidance-form :is(input,textarea,select):disabled {opacity:1;color:#bcc4be;background:#1c201e;border-color:#343b36}
+.settings-page .guidance-source {font-size:.8125rem;color:#9fa8a1;flex-wrap:wrap;gap:8px}
+.settings-page .guidance-source .ghost {padding:3px 8px;min-height:30px;font-size:.8125rem}
+.settings-page .field-hint {font-size:.875rem;color:#a0aaa2;line-height:1.65}
+.settings-page .guidance-help {padding:0 16px;border:1px solid #363e37;border-radius:8px;background:#1a211c}
+.settings-page .guidance-help summary {font-size:.875rem;min-height:44px;color:#c5d0c4;list-style:revert;display:list-item;margin-left:16px}
+.settings-page .guidance-help p {font-size:.875rem}
+.settings-page .guidance-help a {display:inline-block;font-size:.875rem;margin:8px 0 14px}
+.guidance-commit-setting {padding:22px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.guidance-commit-setting .field-hint {margin-top:12px}
+.settings-page .guidance-checkbox>span:first-child {align-items:flex-start;line-height:1.6}
+.settings-page .guidance-checkbox input {flex-shrink:0;margin-top:3px;accent-color:var(--primary)}
+.settings-page .editor-actions {flex-wrap:wrap;gap:12px;padding-top:20px;border-color:var(--border)}
+.settings-page .editor-actions>button:first-child {margin-right:auto}
+.reconciliation-body {padding:24px}
+.reconciliation-body>p:first-child {font-size:1rem;color:#c2cdc4}
+.reconciliation-body>.field-hint {margin:8px 0 20px}
+.reconciliation-body>button {margin:0 12px 12px 0}
+.reconciliation-body details {margin:16px 0;font-size:.875rem}
+@media(max-width:900px) {
+  .transfer-grid {grid-template-columns:1fr}
+  .transfer-action+.transfer-action {border-left:0;border-top:1px solid var(--border)}
+  .archive-project {grid-template-columns:1fr;gap:16px}
+}
+@media(max-width:600px) {
+  .settings-page {padding-top:24px;gap:18px}
+  .settings-card-header {padding:20px;gap:12px;flex-wrap:wrap;align-items:flex-start}
+  .settings-card-header>div {flex-basis:calc(100% - 56px)}
+  .settings-card-header>.secondary {width:100%}
+  .settings-card-header>.settings-badge {margin-left:54px}
+  .transfer-action,.archive-preview,.transfer-feedback,.reconciliation-body,.settings-page .guidance-form {padding:20px}
+  .guidance-field-pair {grid-template-columns:1fr;gap:20px}
+  .guidance-context {padding:20px 20px 0;flex-wrap:wrap}
+  .archive-preview-heading,.archive-confirm {flex-wrap:wrap}
+  .archive-confirm button {width:100%}
+  .archive-project {padding:16px}
+  .transfer-limits {padding:14px 20px}
+  .settings-page .editor-actions {align-items:stretch;flex-direction:column}
+  .settings-page .editor-actions>button:first-child {margin-right:0}
+}

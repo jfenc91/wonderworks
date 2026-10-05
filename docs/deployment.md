@@ -97,7 +97,7 @@ For an existing local Sites emulator, build Sites first and apply only migration
 
 ## Complete archives, backup and transfer
 
-The UI's **Workspace backup & import** exports the selected project or all accessible projects to `.wwspace`. Capture reads every selected workspace root, storage-version root, unexpired retry receipt and import-provenance row in one database transaction. Immutable content records are fetched afterward. Unsaved forms are not captured. Exports create no baseline or history activity and do not advance versions.
+Open **Project settings → Workspace backup & import** to export the selected project or all accessible projects to `.wwspace`. Capture reads every selected workspace root, storage-version root, unexpired retry receipt and import-provenance row in one database transaction. Immutable content records are fetched afterward. Unsaved forms are not captured. Exports create no baseline or history activity and do not advance versions.
 
 Version 1 is a self-contained ZIP with `manifest.json` and `records/<sha256>.json`. The manifest names the producer, format/storage versions, archive identity/time, project IDs and committed versions, required hashes, record sizes and totals. Logical record trees preserve ordering, UTF-8 source, absent legacy fields and unknown additive keys. Equal records occur once per archive and are deflated. Original accepted/staged content, all snapshots, evidence, history/lifecycle, guidance, repository/implementation metadata, stored versions and unexpired retries are included. Deployment credentials and account/session configuration are not database workspace data and are never exported.
 
