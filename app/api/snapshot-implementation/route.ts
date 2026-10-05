@@ -1,4 +1,4 @@
-import {env} from 'cloudflare:workers';
+import {database} from '@/db/runtime';
 import {McpStore} from '@/db/mcp-store';
 import {callTool} from '@/lib/mcp/service';
 import {originAllowed,readBody} from '@/lib/mcp/http';
@@ -21,7 +21,7 @@ async function handle(request:Request){
       args=await readBody(request);
     }
     const actor={id:request.headers.has('oai-sites-authorization')?null:request.headers.get('oai-authenticated-user-id')};
-    return Response.json(await callTool(new McpStore(env.DB),name,args,actor,correlationId),{headers});
+    return Response.json(await callTool(new McpStore(database()),name,args,actor,correlationId),{headers});
   }catch(error){
     if(error instanceof ToolError)return Response.json({error:{code:error.code,message:error.message,...error.details},correlation_id:correlationId},{headers,status:error.code==='NOT_FOUND'?404:['CONFLICT','RESTART_REQUIRED','IDEMPOTENCY_KEY_REUSED'].includes(error.code)?409:400});
     if(error instanceof ProtocolError)return Response.json({error:{code:'VALIDATION_ERROR',message:error.message}},{headers,status:error.status});

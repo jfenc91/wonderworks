@@ -1,0 +1,28 @@
+services:
+  migrate:
+    build: .
+    image: wonderworks:${WW_IMAGE_TAG:-local}
+    command: ["node", "scripts/setup.mjs"]
+    environment: &environment
+      WW_PROFILE: self-hosted
+      WW_HOST: 0.0.0.0
+      WW_PORT: 3000
+      WW_PUBLIC_URL: ${WW_PUBLIC_URL:?Set the public origin}
+      WW_DATABASE_URL: ${WW_DATABASE_URL:?Set external PostgreSQL URL}
+      WW_PG_TLS: ${WW_PG_TLS:-verify-full}
+      WW_PG_CA_FILE: ${WW_PG_CA_FILE:-}
+      WW_ACCOUNTS_FILE: /run/wonderworks/accounts.json
+      WW_SESSION_SECRET: ${WW_SESSION_SECRET:?Set a stable random session secret}
+    volumes: &secrets
+      - ./secrets:/run/wonderworks:ro
+  app:
+    build: .
+    image: wonderworks:${WW_IMAGE_TAG:-local}
+    environment: *environment
+    volumes: *secrets
+    ports:
+      - "127.0.0.1:${WW_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    init: true

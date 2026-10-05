@@ -1,17 +1,23 @@
 {
   "name": "site-creator-vinext-starter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=24.0.0 <25"
   },
   "scripts": {
     "install:ci": "node scripts/install-ci.mjs",
     "dev": "node scripts/run-framework.mjs dev",
     "build": "node scripts/run-framework.mjs build",
-    "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
+    "start": "node server/start.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "start:sites": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
+    "setup": "node scripts/setup.mjs",
+    "account": "node scripts/create-account.mjs",
+    "build:standalone": "node scripts/build-standalone.mjs",
+    "build:sites": "node scripts/run-framework.mjs build",
+    "workspace": "node scripts/workspace-backup.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -28,12 +34,14 @@
     "drizzle-orm": "0.45.2",
     "embla-carousel-react": "^8.6.0",
     "entities": "8.1.0",
+    "fflate": "0.8.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^1.31.0",
     "marked": "17.0.6",
     "next": "16.3.4",
     "next-themes": "^0.4.6",
     "pdfkit": "0.17.2",
+    "pg": "8.16.3",
     "radix-ui": "^1.6.7",
     "react": "19.2.6",
     "react-day-picker": "^10.0.1",
@@ -53,6 +61,7 @@
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/pdfkit": "0.17.3",
+    "@types/pg": "8.15.5",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@types/svg-to-pdfkit": "0.1.3",

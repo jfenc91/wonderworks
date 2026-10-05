@@ -1,29 +1,17 @@
 'use client';
-import {useState} from 'react';
-import {Sparkles,Copy,Check,Plug,FileText,GitPullRequest,ShieldCheck} from 'lucide-react';
-
+import Link from 'next/link';
+import {useEffect,useState} from 'react';
+import {Sparkles,Copy,Check,Plug} from 'lucide-react';
+type Connection={profile:string;auth:string;mcpUrl:string;protocols:string[];toolCount:number};
 export default function Integrations(){
-  const [copied,setCopied]=useState(false),[error,setError]=useState('');
-  async function copy(){try{await navigator.clipboard.writeText(new URL('/mcp',window.location.origin).href);setCopied(true);setError('');}catch{setError('Copy the address from your browser and add /mcp.');}}
-  return <main className="connection-page">
-    <a className="brand" href="/"><Sparkles size={26}/><strong>wonderworks</strong></a>
-    <div className="eyebrow"><Plug size={16}/> ASSISTANT CONNECTION</div>
-    <h1>Bring your requirements<br/>into the conversation.</h1>
-    <p className="connection-intro">Connect Wonderworks to an assistant to read specifications, propose changes, and bring verification results back to the right snapshot.</p>
-    <div className="connection-grid"><section className="connection-card">
-      <h2>Connect the Wonderworks plugin</h2>
-      <ol><li>In Codex or ChatGPT, open <strong>Plugins → Personal → Created by you</strong> and select Wonderworks.</li><li>Choose <strong>Install</strong> or <strong>Connect</strong>, then authorize with the account that has access to this Site.</li><li>Ask your assistant: <em>“List my Wonderworks projects and read the requirements for Wonderworks.”</em></li></ol>
-      <p>Your assistant can keep working after you close this browser tab. It uses the same saved project data.</p>
-      <button className="secondary" onClick={()=>void copy()}>{copied?<Check size={16}/>:<Copy size={16}/>} {copied?'MCP address copied':'Copy MCP address'}</button>
-      {error&&<p role="alert">{error}</p>}
-    </section><section className="connection-card">
-      <h2>What the connection can do</h2>
-      <p><FileText size={18}/> Read requirements, snapshots, repository links, proposals, and evidence.</p>
-      <p><GitPullRequest size={18}/> Draft and submit requirement changes. Apply, reject, or request changes in Wonderworks.</p>
-      <p><ShieldCheck size={18}/> Record test results against an existing snapshot, including failures.</p>
-      <p>Access follows this Site’s sharing settings. To disconnect, open the plugin’s settings in your assistant and revoke its connection.</p>
-    </section></div>
-    <details className="connection-card"><summary>Connection details</summary><p>The endpoint is this Site’s address followed by <code>/mcp</code>. The Site plugin supplies the correct OAuth resource and hosted sign-in flow automatically.</p><p>Transport: Streamable HTTP. Supported protocol revisions: 2025-11-25, 2025-06-18, and 2025-03-26. There are 16 tools; every project operation requires an explicit project ID.</p><p>Writes require the last-read workspace version and an idempotency key. Retry an uncertain write with identical arguments and the same key within 24 hours. After that window, inspect the saved proposal or evidence before trying again.</p></details>
-    <a className="secondary" href="/">Return to requirements</a>
-  </main>;
+  const [connection,setConnection]=useState<Connection|null>(null),[copied,setCopied]=useState(false),[error,setError]=useState('');
+  useEffect(()=>{void fetch('/api/deployment',{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Sign in to read connection settings.');setConnection(await r.json() as Connection);}).catch(e=>setError(e.message));},[]);
+  async function copy(){if(!connection)return;try{await navigator.clipboard.writeText(connection.mcpUrl);setCopied(true);}catch{setError('Copy the MCP address displayed below.');}}
+  return <main className="connection-page"><Link className="brand" href="/"><Sparkles size={26}/><strong>wonderworks</strong></Link><div className="eyebrow"><Plug size={16}/> ASSISTANT CONNECTION</div><h1>Bring your requirements<br/>into the conversation.</h1><p className="connection-intro">Read specifications, propose changes, and record verification against the right snapshot.</p>{error&&<p role="alert">{error}</p>}{connection&&<>
+    <div className="connection-grid"><section className="connection-card"><h2>{connection.profile==='sites'?'Connect the Wonderworks plugin':'Connect to this installation'}</h2>
+      {connection.profile==='sites'?<><ol><li>In your assistant, open Plugins → Personal → Created by you and select the existing Wonderworks plugin.</li><li>Install or connect it, then authorize with the account that has access to this Site.</li><li>Ask: “List my Wonderworks projects, then read the selected project.”</li></ol><p>The existing Site App supplies its managed OAuth resource and authorization flow. Reconnecting retains this Site’s database and audience.</p></>:connection.profile==='local'?<><p>Add the Streamable HTTP address below to an MCP client running on this computer. Explicit local mode supplies the stable local-user identity only on the loopback listener.</p><p>A cloud assistant cannot reach this loopback URL. For remote access, run the self-hosted profile with HTTPS and configured accounts.</p></>:<><p>Add this Streamable HTTP address to your MCP client. Configure an Authorization header with <code>Bearer YOUR_TOKEN</code> using the private token issued by your installation administrator.</p><p>This installation uses its own accounts for browser sign-in and bearer tokens for MCP; it does not provision a Sites plugin or OAuth resource. A remote client needs a reachable HTTPS URL.</p></>}
+      <p><code>{connection.mcpUrl}</code></p><button className="secondary" onClick={()=>void copy()}>{copied?<Check size={16}/>:<Copy size={16}/>} {copied?'Copied':'Copy MCP address'}</button></section>
+      <section className="connection-card"><h2>Scope and review</h2><p>{connection.toolCount} tools read requirements, snapshots, proposals, history, guidance, repositories and evidence; stage and submit changes; and record implementation references and test results.</p><p>Review, Apply, Reject and Request changes occur in Wonderworks. Every project operation uses an explicit project ID.</p><p>Your assistant can work with the browser closed against the same saved database.</p><p>{connection.profile==='sites'?'Revoke the plugin connection in your assistant to disconnect. Site sharing controls access.':connection.profile==='local'?'Remove the client connection or stop the local application to disconnect. Local mode is for one trusted OS user.':'Remove the client connection and have your administrator remove its token hash to revoke it. Disable the account to revoke all its sessions and tokens immediately.'}</p></section></div>
+    <section className="connection-card"><h2>Connection details</h2><p>Profile: {connection.profile}. Authentication: {connection.auth}. Transport: stateless Streamable HTTP.</p><p>Supported protocol revisions: {connection.protocols.join(', ')}. Initialize, discover tools, then call list_projects for the first authorized read.</p><p>Mutation requests use the last-read workspace version and an idempotency key. Retry uncertain writes with identical arguments and the same key within 24 hours. MCP requests are limited to 250,000 UTF-8 bytes; complete workspace archives use the separate transfer controls.</p></section></>}
+    <Link className="secondary" href="/">Return to requirements</Link><form action="/signout-with-chatgpt" method="post"><button className="secondary">Sign out</button></form></main>;
 }

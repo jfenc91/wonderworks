@@ -47,3 +47,13 @@ next-env.d.ts
 
 # TypeScript build cache
 *.tsbuildinfo
+
+# Private portability data and standalone settings
+*.wwspace
+*.sqlite*
+*.token
+/secrets/
+/data-local/
+!/.env.example
+*.operation
+*.partial

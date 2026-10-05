@@ -1,0 +1,301 @@
+{
+  "schema_version": 1,
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "proposal_id": "CP-014",
+  "baseline_id": "BL-015",
+  "requirements_version": 15,
+  "verified_at": "2026-10-05T05:13:22.404Z",
+  "requirements": [
+    {
+      "id": "WW-026",
+      "revision": 3
+    },
+    {
+      "id": "WW-029",
+      "revision": 4
+    },
+    {
+      "id": "WW-030",
+      "revision": 4
+    },
+    {
+      "id": "WW-035",
+      "revision": 3
+    },
+    {
+      "id": "WW-043",
+      "revision": 3
+    },
+    {
+      "id": "WW-110",
+      "revision": 1
+    },
+    {
+      "id": "WW-111",
+      "revision": 1
+    },
+    {
+      "id": "WW-112",
+      "revision": 1
+    },
+    {
+      "id": "WW-113",
+      "revision": 1
+    },
+    {
+      "id": "WW-114",
+      "revision": 1
+    },
+    {
+      "id": "WW-115",
+      "revision": 1
+    },
+    {
+      "id": "WW-116",
+      "revision": 1
+    },
+    {
+      "id": "WW-117",
+      "revision": 1
+    },
+    {
+      "id": "WW-118",
+      "revision": 1
+    },
+    {
+      "id": "WW-119",
+      "revision": 1
+    },
+    {
+      "id": "WW-120",
+      "revision": 1
+    },
+    {
+      "id": "WW-121",
+      "revision": 1
+    },
+    {
+      "id": "WW-122",
+      "revision": 1
+    },
+    {
+      "id": "WW-123",
+      "revision": 1
+    },
+    {
+      "id": "WW-124",
+      "revision": 1
+    },
+    {
+      "id": "WW-125",
+      "revision": 1
+    },
+    {
+      "id": "WW-126",
+      "revision": 1
+    }
+  ],
+  "summary": "Three runtime profiles and complete-workspace archives implemented. Automated checks pass in available macOS/D1-preview/SQLite/PostgreSQL environments; incomplete deployment verification remains explicitly unverified.",
+  "checks": [
+    {
+      "id": "WW-026",
+      "title": "Persist project data in durable workspace storage",
+      "passed": true,
+      "detail": "r3: SQLite and real PostgreSQL commits survive restart; D1, SQLite and PostgreSQL preserve exact workspace JSON and durable retry outcomes. Transaction rollback and competing writes checked."
+    },
+    {
+      "id": "WW-029",
+      "title": "Protect workspace and MCP access at the configured deployment boundary",
+      "passed": true,
+      "detail": "r4: Standalone browser/API/MCP identity boundary, forged identity/forwarded headers, wrong Host/Origin, denied/revoked accounts and tokens checked. Existing Sites MCP byte limits and REST request limits retain regression coverage."
+    },
+    {
+      "id": "WW-030",
+      "title": "Import workspaces and reconcile updates without bypassing review",
+      "passed": true,
+      "detail": "r4: Archive restore/copy uses a distinct operation; conflicts cannot overwrite existing workspaces. Imported open proposals remain pending and existing reconciliation safeguards passed regression tests."
+    },
+    {
+      "id": "WW-035",
+      "title": "Expose a remote MCP endpoint",
+      "passed": true,
+      "detail": "r3: Official MCP SDK initialized, listed 18 tools and read projects with the browser closed against D1 preview, SQLite production server and PostgreSQL production server."
+    },
+    {
+      "id": "WW-043",
+      "title": "Connect assistants to the selected deployment's MCP endpoint",
+      "passed": true,
+      "detail": "r3: Integrations UI reports the actual profile, configured endpoint, authentication and 18-tool catalog. SDK 1.32.0 negotiated protocol 2025-11-25 in all three runtime profiles. Sites managed production MCP readback is recorded with release evidence."
+    },
+    {
+      "id": "WW-110",
+      "title": "Support three deployment profiles from one application",
+      "passed": true,
+      "detail": "r1: One source builds Sites and standalone output; clean standalone build/start needs no .openai configuration, Sites bindings, account or emulator. PostgreSQL production server and browser workflow ran independently of Cloudflare."
+    },
+    {
+      "id": "WW-111",
+      "title": "Publish the current application reproducibly to ChatGPT Sites",
+      "passed": true,
+      "detail": "r1: Sites production build and supported existing-Site source/build/package workflow used with the same Site ID, D1 and private audience. Final deployment identity/status is recorded separately in baseline implementation/evidence metadata."
+    },
+    {
+      "id": "WW-112",
+      "title": "Start a durable local installation with embedded SQLite",
+      "passed": false,
+      "detail": "r1: macOS arm64 clean npm ci, standalone build, setup, start, project/Draft creation and restart passed; SQLite locking, safe failures and MCP replay also passed. Required Linux clean-checkout execution remains unverified."
+    },
+    {
+      "id": "WW-113",
+      "title": "Persist self-hosted workspaces in PostgreSQL",
+      "passed": true,
+      "detail": "r1: PostgreSQL 17.10: independent pools and separate production app processes, same-key retries, competing stale writes, injected trigger rollback, restart and cross-backend transfer passed. External TLS certificate integration remains unexecuted."
+    },
+    {
+      "id": "WW-114",
+      "title": "Configure deployments without rebuilding application source",
+      "passed": true,
+      "detail": "r1: Runtime-only URL/port/database/auth configuration, explicit profile validation, unknown/unsafe combinations and forged proxy inputs checked. No source edits or Sites environment are needed by standalone builds."
+    },
+    {
+      "id": "WW-115",
+      "title": "Initialize and upgrade each database safely",
+      "passed": true,
+      "detail": "r1: Fresh and repeated SQLite/PostgreSQL migration, D1 migration chain, legacy storage preservation, schema mismatch/missing checks and SQLite lock recovery passed. Drizzle reports no schema drift. Production Sites migration result accompanies the deployment record."
+    },
+    {
+      "id": "WW-116",
+      "title": "Package a production Docker image",
+      "passed": false,
+      "detail": "r1: Committed multi-stage locked Dockerfile runs compiled output as non-root with no startup download, graceful shutdown and a tested Host-aware health probe. Docker image build/run and Linux CPU architecture execution were unavailable; no image digest is claimed."
+    },
+    {
+      "id": "WW-117",
+      "title": "Provide Compose setups for bundled and external PostgreSQL",
+      "passed": false,
+      "detail": "r1: Bundled persistent PostgreSQL and external PostgreSQL Compose files, migration dependencies, private secrets, readiness and loopback publication are implemented. No Docker daemon/Compose execution or external TLS database was available."
+    },
+    {
+      "id": "WW-118",
+      "title": "Enforce an explicit access boundary outside Sites",
+      "passed": true,
+      "detail": "r1: Password login, stable bearer actor, private account file validation, immediate token/account revocation, password rotation, durable session logout, anonymous/forged identity rejection and loopback restrictions passed."
+    },
+    {
+      "id": "WW-119",
+      "title": "Back up and transfer complete deployment data",
+      "passed": true,
+      "detail": "r1: D1↔SQLite, D1↔PostgreSQL and SQLite↔PostgreSQL representative complete archives round-trip exactly, including frozen content and actor-scoped retries. CLI all-project backup and empty SQLite restore passed; nonempty destinations are refused. Auth credentials/sessions remain excluded."
+    },
+    {
+      "id": "WW-120",
+      "title": "Report health and preserve data through operational failures",
+      "passed": false,
+      "detail": "r1: Standalone readiness/liveness, missing/newer schemas, invalid configuration, unusable path, contention, rollback/retry and restart recovery checked with safe errors. Docker/Compose operational recovery and an external PostgreSQL outage/recovery drill remain unexecuted."
+    },
+    {
+      "id": "WW-121",
+      "title": "Document a verified quickstart for each deployment profile",
+      "passed": false,
+      "detail": "r1: README and deployment guide document all profiles, runtime config, auth/MCP, upgrades, private backups, transfer, limits and reset. Exact clean macOS SQLite install/build/setup/start/restart commands passed. Linux and Docker/Compose quickstarts remain unverified."
+    },
+    {
+      "id": "WW-122",
+      "title": "Verify deployment parity and upgrade safety",
+      "passed": false,
+      "detail": "r1: Automated API/unit, separate-process, browser, SDK and cross-backend checks passed in the available environments. The full per-profile acceptance matrix is incomplete: Docker/Compose/Linux/external TLS and a separate-Worker live-update probe were not executed."
+    },
+    {
+      "id": "WW-123",
+      "title": "Export complete project workspaces",
+      "passed": true,
+      "detail": "r1: UI single-project export/import-copy passed on D1 preview, SQLite and PostgreSQL. All-project CLI backup/restore and multi-project archive tests passed; roots/history/receipts captured consistently without changing versions. UI progress/cancellation implemented and archive cancellation checked."
+    },
+    {
+      "id": "WW-124",
+      "title": "Use an efficient versioned workspace archive",
+      "passed": true,
+      "detail": "r1: Versioned ZIP uses SHA-256 logical records, deduplication and compression. Exact Unicode/unknown/absent fields, multiple projects, >2 MiB incompressible data, corruption, truncation, unsupported versions, unsafe paths, malformed references and expansion bounds checked."
+    },
+    {
+      "id": "WW-125",
+      "title": "Preview and atomically import complete workspace archives",
+      "passed": true,
+      "detail": "r1: Preview conflicts, selected restore/copy, no overwrite, atomic selected publication, injected import rollback, cancelled operation, same-operation retries and restart replay passed. Browser retries retain operation metadata across reload through sessionStorage."
+    },
+    {
+      "id": "WW-126",
+      "title": "Preserve identity and provenance during workspace import",
+      "passed": true,
+      "detail": "r1: Exact restore preserves historical values and retry actor scope; copy changes only live project identity. Immutable source assertions and inactive copied receipts are retained with separate import provenance, visibly labeled in the UI. Existing project data remains unchanged."
+    }
+  ],
+  "executed": {
+    "unit_and_api": {
+      "tests": 167,
+      "passed": 165,
+      "failed": 0,
+      "skipped": 2,
+      "skip_reason": "Standalone production probes run separately against a standalone build."
+    },
+    "standalone_production_processes": {
+      "tests": 2,
+      "passed": 2,
+      "failed": 0
+    },
+    "sites_browser_regression": {
+      "tests": 32,
+      "passed": 31,
+      "failed": 0,
+      "skipped": 1,
+      "skip_reason": "Second independent Worker URL unavailable."
+    },
+    "sqlite_archive_browser": "passed",
+    "postgresql_archive_browser": "passed",
+    "official_mcp_sdk": {
+      "version": "1.32.0",
+      "protocol": "2025-11-25",
+      "tools": 18,
+      "profiles": [
+        "sites-preview",
+        "local",
+        "self-hosted"
+      ],
+      "independent_browser_closed_read": "passed"
+    },
+    "clean_checkout": "npm ci; npm run build:standalone; WW_SQLITE_PATH=<private-test-db> npm run setup; WW_SQLITE_PATH=<same-db> WW_PORT=5185 npm start; project/Draft creation; stop/start; exact readback passed. No .openai directory or developer runtime configuration copied.",
+    "cli_archive": "npm run workspace -- backup <source-origin> <private-archive>; npm run workspace -- restore-empty <empty-destination-origin> <same-private-archive>; exact project/Draft readback passed.",
+    "typecheck": "passed",
+    "targeted_lint": "no errors; existing anonymous default export style warning in Sites worker",
+    "drizzle_schema": "No schema changes",
+    "health_probe": "configured public Host preserved",
+    "runtime": {
+      "os": "macOS arm64",
+      "node": "24.19.0",
+      "postgresql": "17.10",
+      "sqlite": "Node 24 built-in node:sqlite",
+      "d1": "Wrangler/Miniflare local D1",
+      "browser": "Chromium"
+    }
+  },
+  "commands": [
+    "node --import tsx --test test/*.test.mjs (WW_TEST_POSTGRES_URL supplied through test environment)",
+    "node --import tsx --test test/standalone-process.test.mjs (clean standalone build; disposable PostgreSQL)",
+    "node --test --test-concurrency=1 test/portability.browser.mjs test/reading-editing.browser.mjs test/full-content.browser.mjs test/workspace-sync.browser.mjs",
+    "node --test test/portability.browser.mjs (separate SQLite and PostgreSQL production origins)",
+    "node test/mcp-sdk-client.mjs (each available runtime origin)",
+    "node node_modules/typescript/bin/tsc --noEmit",
+    "node node_modules/drizzle-kit/bin.cjs generate",
+    "npm ci; npm run build:standalone; npm run setup; npm start",
+    "Sites supported site-workflow.mjs with build-site.mjs, source push and artifact packaging"
+  ],
+  "limits": [
+    "False checks identify incomplete verification; they do not mean an observed product test failure.",
+    "No Docker engine/Compose or Linux execution environment was available. No container/architecture test or image digest is claimed.",
+    "Real PostgreSQL ran locally with TLS disabled on loopback. External PostgreSQL TLS and outage drills remain unverified.",
+    "Not every historical UI workflow was repeated on every backend. Full live-update/unsaved-edit browser regressions ran on D1 preview.",
+    "Sites preview SDK testing uses emulator identity; managed production OAuth readback is separate baseline evidence.",
+    "Synthetic test data only. Private archives, database files, credentials and raw logs stay outside committed/public artifacts.",
+    "Implementation commit, actual Sites version/deployment and final verification evidence are associated with BL-015 through Wonderworks MCP."
+  ]
+}

@@ -2,18 +2,22 @@
 
 A standalone requirements platform. Projects contain sections, requirements, dependencies, acceptance criteria, revision history, immutable baselines, and verification evidence. The included Asteroids specification is ordinary project data, not a coupled game implementation.
 
-## Development
+## Choose a deployment
 
-Requires Node.js 22.13 or later and npm.
+One source supports Sites/D1, account-free local SQLite, and Docker/PostgreSQL. Use Node.js **24.x** and the committed npm lockfile. Local SQLite is for one trusted OS user on macOS or Linux; shared installations use PostgreSQL 17 and built-in accounts. Container targets are Linux amd64/arm64. Runtime settings, authentication, operations, archive limits, and recovery commands are in [the deployment guide](docs/deployment.md). Executed results and unverified environments are recorded against BL-015 in `public/verification/cp-014.json`.
 
-```sh
-npm ci
-npm run build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_graceful_terror.sql
-npm run dev
-```
+| Profile | First commands after checkout | Address and storage |
+| --- | --- | --- |
+| Local SQLite | `npm ci`, `npm run build:standalone`, `npm run setup`, `npm start` | `http://127.0.0.1:3000`; `~/.local/share/wonderworks/workspace.sqlite` |
+| Sites/D1 | `npm ci`, `npm run build:sites`, then the supported Sites publish workflow for the explicitly selected existing/new Site | Published Site URL; managed D1 binding `DB` |
+| Docker/PostgreSQL | Provision private accounts and `.env` as described in the guide; `docker compose up --build -d` | `http://127.0.0.1:3000`; named PostgreSQL volume |
+| External PostgreSQL | Same image/configuration; `docker compose -f compose.external.yaml up --build -d` | Configured public origin; operator-managed PostgreSQL |
 
-Apply the migration once to a new local database. Development uses `http://127.0.0.1:5173/`; local data persists under `.wrangler/state`. Production uses the declared D1 binding and private Sites access. Do not expose the API publicly without adding authorization.
+After startup, choose **New project**, create a section and a Draft proposal, save a requirement, then stop/start the app and check that project and proposal. The local profile needs no Sites account, Docker, Cloudflare emulator, or Asteroids game. `WW_PORT` changes the local port; `WW_SQLITE_PATH` selects a persistent local disk path. Environment variables are runtime settings: use `node --env-file=/private/local.env server/start.mjs` and the same environment with `scripts/setup.mjs` when using a file. The app does not automatically load arbitrary `.env` files.
+
+Use **Workspace backup & import** for complete `.wwspace` backups, restore, and copies. Markdown, JSON and PDF specification exports remain separate reading/implementation artifacts. Imported historical approvals and evidence remain source provenance, not new local review decisions.
+
+Sites development remains available with `npm run dev` at `http://127.0.0.1:5173`. It uses D1 emulation and is distinct from ordinary local SQLite. The supported Sites workflow applies all committed `drizzle/` migrations before activating a deployment. See the guide before migrating an existing emulator database.
 
 ## Data and integration
 

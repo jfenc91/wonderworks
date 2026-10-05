@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.env*
+!.env.example
+.openai
+.wrangler
+.sites-runtime
+outputs
+work
+secrets
+data-local
+*.wwspace
+*.sqlite*
+*.token
+*.pem
+*.operation

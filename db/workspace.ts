@@ -1,9 +1,8 @@
-import {env} from 'cloudflare:workers';
+import {database} from '@/db/runtime';
 import seed from '@/data/workspace.json';
 import type {Workspace} from '@/lib/types';
 import {readStoredRecord,prepareStoredRecord,prepareWorkspaceCommit,StoredRecordSession} from './workspace-records';
 const reads=new WeakMap<Workspace,StoredRecordSession>();
-function database(){if(!env.DB)throw new Error('Workspace storage is unavailable');return env.DB;}
 async function ensureSeed(db:D1Database){await db.prepare('INSERT OR IGNORE INTO workspaces (id,data,version) VALUES (?,?,?)').bind('asteroids',JSON.stringify(seed),seed.version).run();}
 // Version polling and project selectors need only the small root envelope.
 export async function readWorkspaceVersion(id:string){return (await database().prepare('SELECT version FROM workspaces WHERE id=?').bind(id).first<{version:number}>())?.version??null;}

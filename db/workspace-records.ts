@@ -9,7 +9,7 @@ const LEAF_BYTES=32_000,MAX_ROW_BYTES=65_536,FANOUT=128;
 // can reference thousands of records; awaiting every query serially adds a
 // network round trip for each 24 records.
 const READ_QUERY_SIZE=24,READ_BATCH_QUERIES=8;
-type Node={type:'value';value:unknown}|{type:'object';entries:[string,string][]}|
+export type Node={type:'value';value:unknown}|{type:'object';entries:[string,string][]}|
   {type:'array'|'arrays'|'objects'|'text';items:string[]};
 type Pointer={storage_encoding:typeof RECORD_ENCODING;name?:string;root:string};
 type Graph={root:string;records:Map<string,string>;sha256:string};
@@ -30,9 +30,9 @@ const bytes=(s:string)=>new TextEncoder().encode(s);
 export async function sha256(s:string){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');}
 export function isRecordPointer(data:string){return JSON.parse(data)?.storage_encoding===RECORD_ENCODING;}
 function pointer(graph:Graph,value:unknown){return JSON.stringify({storage_encoding:RECORD_ENCODING,...(value&&typeof value==='object'&&'name' in value?{name:(value as {name?:string}).name}:{}),root:graph.root});}
-function references(node:Node){return node.type==='value'?[]:node.type==='object'?node.entries.flat():node.items;}
+export function references(node:Node){return node.type==='value'?[]:node.type==='object'?node.entries.flat():node.items;}
 function validHash(value:unknown):value is string{return typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);}
-function parseNode(data:string):Node{
+export function parseNode(data:string):Node{
   if(bytes(data).length>MAX_ROW_BYTES)throw Error('Storage record exceeds its size limit');
   const n=JSON.parse(data);
   if(n?.type==='value'&&Object.hasOwn(n,'value'))return n;
@@ -104,15 +104,17 @@ export async function readStoredRecord<T>(db:D1Database,project:string,data:stri
   }
   return materialize(envelope.root,nodes) as T;
 }
-function materialize(root:string,nodes:Map<string,Node>):unknown{
+export function materialize(root:string,nodes:Map<string,Node>,limit=Number.POSITIVE_INFINITY):unknown{
+  let expanded=0,visits=0;
   function visit(hash:string,ancestors=new Set<string>()):any{
+    if(Number.isFinite(limit)&&(ancestors.size>64||++visits>1000000))throw Error('Storage record nesting/expansion limit exceeded');
     if(ancestors.has(hash))throw Error('Cyclic storage records');
     const n=nodes.get(hash);if(!n)throw Error('Missing storage record');
     const path=new Set(ancestors);path.add(hash);
     const child=(h:string)=>visit(h,path);
     // Never memoize returned objects: current, proposal, and frozen versions
     // must not alias each other even when their on-disk records are shared.
-    if(n.type==='value')return structuredClone(n.value);
+    if(n.type==='value'){expanded+=bytes(JSON.stringify(n.value)).length;if(expanded>limit)throw Error('Storage expansion limit exceeded');return structuredClone(n.value);}
     if(n.type==='object')return Object.fromEntries(n.entries.map(([k,v])=>{const key=child(k);if(typeof key!=='string')throw Error('Invalid stored property name');return [key,child(v)];}));
     const parts=n.items.map(child);
     if(n.type==='array')return parts;

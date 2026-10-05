@@ -80,6 +80,7 @@ export async function POST(request:Request){
     captureRequirementHistory(original,doc,{source:input.action,actor:{id:request.headers.has('oai-sites-authorization')?null:request.headers.get('oai-authenticated-user-id')}});
     return Response.json(await saveWorkspace(doc,doc.version));
   }catch(error){
+    if(error&&typeof error==='object'&&'retryable' in error)return Response.json({error:'Workspace storage is unavailable. Retry after recovery; no unsaved change was acknowledged.'},{status:503,headers:{'Cache-Control':'no-store'}});
     if(error instanceof Error&&error.message==='CONFLICT'){
       return Response.json({error:'Newer saved changes are available. Fetch the latest workspace and explicitly reconcile your pending edit before saving.',current_workspace_version:await readWorkspaceVersion(projectId)},{status:409});
     }

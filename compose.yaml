@@ -1,0 +1,45 @@
+services:
+  database:
+    image: postgres:17.10-bookworm
+    environment:
+      POSTGRES_USER: wonderworks
+      POSTGRES_DB: wonderworks
+      POSTGRES_PASSWORD: ${WW_POSTGRES_PASSWORD:?Set a private database password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wonderworks -d wonderworks"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  migrate:
+    build: .
+    image: wonderworks:${WW_IMAGE_TAG:-local}
+    command: ["node", "scripts/setup.mjs"]
+    environment: &environment
+      WW_PROFILE: self-hosted
+      WW_HOST: 0.0.0.0
+      WW_PORT: 3000
+      WW_PUBLIC_URL: ${WW_PUBLIC_URL:-http://127.0.0.1:3000}
+      WW_DATABASE_URL: ${WW_DATABASE_URL:?Set PostgreSQL connection URL}
+      WW_PG_TLS: disable
+      WW_ACCOUNTS_FILE: /run/wonderworks/accounts.json
+      WW_SESSION_SECRET: ${WW_SESSION_SECRET:?Set a stable random session secret}
+    volumes: &secrets
+      - ./secrets:/run/wonderworks:ro
+    depends_on:
+      database:
+        condition: service_healthy
+  app:
+    build: .
+    image: wonderworks:${WW_IMAGE_TAG:-local}
+    environment: *environment
+    volumes: *secrets
+    ports:
+      - "127.0.0.1:${WW_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    init: true
+volumes:
+  postgres-data:
