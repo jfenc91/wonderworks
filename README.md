@@ -4,6 +4,10 @@ A standalone requirements platform. Projects contain sections, requirements, dep
 
 Licensed under the [MIT License](LICENSE).
 
+## Product walkthrough
+
+Watch the [10-minute requirements-flow walkthrough](docs/media/wonderworks-requirements-flow.mp4) (MP4, 28 MB). It follows finding, writing, refining, and reviewing requirements through snapshots, implementation, and verification, with a brief section on AI-assisted drafting. Includes narration and captions.
+
 ## Choose a deployment
 
 One source supports Sites/D1, account-free local SQLite, and Docker/PostgreSQL. Use Node.js **24.x** and the committed npm lockfile. Local SQLite is for one trusted OS user on macOS or Linux; shared installations use PostgreSQL 17 and built-in accounts. Container targets are Linux amd64/arm64. Runtime settings, authentication, operations, archive limits, and recovery commands are in [the deployment guide](docs/deployment.md). Executed results and unverified environments are recorded against BL-015 in `public/verification/cp-014.json`.
