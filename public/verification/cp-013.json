@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "project_id": "18dab86d-4c2d-449a-9a52-99bb35792ddf",
+  "proposal_id": "CP-013",
+  "baseline_id": "BL-013",
+  "requirements_version": 13,
+  "verified_at": "2026-10-05T03:19:13.952Z",
+  "requirements": [
+    {
+      "id": "WW-078",
+      "revision": 4
+    },
+    {
+      "id": "WW-085",
+      "revision": 3
+    },
+    {
+      "id": "WW-098",
+      "revision": 2
+    },
+    {
+      "id": "WW-109",
+      "revision": 1
+    }
+  ],
+  "summary": "Complete inline Requirements reading verified for accepted and staged content, with all saved fields, safe rich rendering, keyboard scrolling, diagrams, source fidelity and protected live authoring.",
+  "checks": [
+    {
+      "id": "WW-078",
+      "title": "Complete format-aware inline presentation",
+      "passed": true,
+      "detail": "Markdown, sanitized HTML and literal plain text render through the shared reader. Tables, code, multiple positioned Mermaid/DOT diagrams, diagram-only items, source access and safe failures pass desktop and compact browser checks."
+    },
+    {
+      "id": "WW-085",
+      "title": "Full selected-context discovery and summary relationships",
+      "passed": true,
+      "detail": "Main items show complete content, format, kind, tags, dependencies, Sources, reverse summaries and diagram mappings. Existing kind/tag/search filters and context navigation pass rich-content and proposal-authoring regressions. Independent MCP reads confirm accepted/staged isolation."
+    },
+    {
+      "id": "WW-098",
+      "title": "Executed full reading and direct Changes editing verification",
+      "passed": true,
+      "detail": "151 automated tests and 37 distinct browser tests pass across full-content, reading-editing, rich-content, proposal-authoring and lifecycle suites. Built Worker full-content and reading-editing checks pass with independently authenticated MCP access through a second local process. TypeScript and production build pass."
+    },
+    {
+      "id": "WW-109",
+      "title": "All saved content readable inline by normal page scrolling",
+      "passed": true,
+      "detail": "Verified full plain-text titles and ordered criteria, all parameter values, links, tags and summary relationships; an exact 50,000-code-point body; authored ellipses and Unicode; complete inline diagrams; vertically expanding items; and keyboard scrolling of wide tables/code. Live staged changes refresh body and metadata together while preserving dirty editor input. Read-only rendering leaves accepted source, snapshots, lifecycle and evidence unchanged."
+    }
+  ],
+  "executed": {
+    "automated": {
+      "command": "node --import tsx --test test/*.test.mjs",
+      "passed": 151,
+      "failed": 0,
+      "log": "outputs/bl013-tests-final.log"
+    },
+    "browser_regression": {
+      "command": "node --test test/full-content.browser.mjs test/rich-content.browser.mjs test/proposal-authoring.browser.mjs test/lifecycle.browser.mjs",
+      "passed": 26,
+      "failed": 0,
+      "log": "outputs/bl013-browser-regression.log"
+    },
+    "direct_reading_editing": {
+      "command": "node --test test/reading-editing.browser.mjs",
+      "passed": 11,
+      "failed": 0,
+      "log": "outputs/bl013-built-reading-retry.log"
+    },
+    "built_worker": {
+      "frontend_origin": "http://127.0.0.1:5180",
+      "mcp_origin": "http://127.0.0.1:5173",
+      "full_content_passed": 5,
+      "reading_editing_passed": 11,
+      "logs": [
+        "outputs/bl013-built-browser.log",
+        "outputs/bl013-built-reading-retry.log"
+      ]
+    },
+    "typecheck": "passed",
+    "new_component_lint": "passed",
+    "production_build": "passed",
+    "visual_review": [
+      "outputs/bl013-desktop-inline.png",
+      "outputs/bl013-inline-1500.png",
+      "outputs/bl013-inline-390.png"
+    ],
+    "earlier_results": [
+      "The first full-content run exposed squeezed table columns. The table layout was corrected and all full-content checks subsequently passed in both development and built Worker runs.",
+      "The first combined built-Worker run passed all five full-content tests. The reading-editing fixture setup failed with a Miniflare D1 internal error while writing large snapshots during concurrent test execution. Repeating reading-editing alone passed all eleven tests; the original failure log is retained.",
+      "The first automated run included temporary unrelated shared-checkout edits and passed 153 tests. After those edits disappeared, the final current-tree run passed 151 tests; only that final count is claimed."
+    ]
+  },
+  "limits": [
+    "Verification used local isolated QA projects and emulated loopback sign-in; hosted OAuth and deployment were not tested.",
+    "Implementation and this report are local repository artifacts. No publication or remote Git reachability is claimed.",
+    "The evidence URL points to the existing loopback development server and is available only where that server is running."
+  ]
+}

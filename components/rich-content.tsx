@@ -4,27 +4,6 @@ import {useEffect,useRef,useState} from 'react';
 import type {Requirement,DiagramBlock} from '@/lib/types';
 import {contentParts,formatOf,kindOf,sourceFreshness,reverseSummaries,normative} from '@/lib/item-content';
 import {sanitizedBody} from '@/lib/content-sanitizer';
-import {excerpt} from '@/lib/item-preview';
-/** Extract text from the same sanitized DOM as the reader, retaining block/cell
- * boundaries and literal code characters. Never strip markup with punctuation regexes. */
-function readableBody(source:string,format:ReturnType<typeof formatOf>){
- if(format==='plain_text')return source;
- const root=document.createElement('template');root.innerHTML=sanitizedBody(source,format).html;
- const read=(node:Node):string=>node.nodeType===Node.TEXT_NODE?node.textContent??'':Array.from(node.childNodes).map(child=>{
-  const block=child instanceof Element&&/^(P|BR|DIV|H[1-6]|LI|UL|OL|PRE|BLOCKQUOTE|TABLE|TR|TH|TD|HR)$/.test(child.tagName);
-  return (block?' ': '')+read(child)+(block?' ':'');
- }).join('');
- return read(root.content).replace(/\s+/g,' ').trim();
-}
-export function RichPreview({item}:{item:Requirement}){
- const key=JSON.stringify([item.description,item.body_format,item.diagrams]);
- const [value,setValue]=useState<{key:string;text:string;truncated:boolean}>();
- useEffect(()=>{try{
-  const parts=contentParts(item);const text=parts.map(p=>p.type==='diagram'?[p.block.title,p.block.alt].filter(Boolean).join(' · '):readableBody(p.source,formatOf(item))).join('\n');
-  setValue({key,...excerpt(text)});
- }catch{setValue({key,text:'Preview unavailable. Open the full reader for original source.',truncated:false});}},[key]);
- return <><span className="requirement-excerpt" data-format={formatOf(item)}>{value?.key===key?value.text:'Preparing preview…'}{value?.key===key&&value.truncated?'…':''}</span><span className="reader-affordance">{value?.key===key&&value.truncated?'More content · ':''}Read full item and source</span></>;
-}
 export function DiagramView({block}:{block:DiagramBlock}){
  const [result,setResult]=useState<{key:string;svg?:string;error?:string}>(),[scale,setScale]=useState(1),[copied,setCopied]=useState(false);
  const key=JSON.stringify([block.language,block.source]);
@@ -34,7 +13,18 @@ export function DiagramView({block}:{block:DiagramBlock}){
 }
 function Body({source,format}:{source:string;format:ReturnType<typeof formatOf>}){
  const [result,setResult]=useState<{key:string;html:string;warning:boolean}>();const key=format+source;
- useEffect(()=>{if(format==='plain_text')return;const value=sanitizedBody(source,format);setResult({key,...value});},[key,format,source]);
+ useEffect(()=>{if(format==='plain_text')return;const value=sanitizedBody(source,format);
+  // Add trusted keyboard scrolling controls after sanitization, preserving table semantics.
+  const root=document.createElement('template');root.innerHTML=value.html;
+  root.content.querySelectorAll('table').forEach((table,index)=>{
+   const scroll=document.createElement('div');scroll.className='rich-scroll';scroll.tabIndex=0;
+   scroll.setAttribute('role','region');scroll.setAttribute('aria-label',`Scrollable table ${index+1}`);
+   table.replaceWith(scroll);scroll.appendChild(table);
+  });
+  root.content.querySelectorAll('pre').forEach((pre,index)=>{
+   pre.tabIndex=0;pre.setAttribute('role','region');pre.setAttribute('aria-label',`Scrollable code block ${index+1}`);
+  });
+  setResult({key,...value,html:root.innerHTML});},[key,format,source]);
  if(format==='plain_text')return <pre className="plain-body">{source}</pre>;
  if(result?.key!==key)return <p role="status">Preparing rendered content…</p>;
  return <>{result.warning&&<p className="content-warning" role="status">Preview removed unsafe or unsupported HTML. Original source is unchanged.</p>}<div className="semantic-body" dangerouslySetInnerHTML={{__html:result.html}}/></>;

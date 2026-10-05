@@ -248,7 +248,7 @@ Verification: `node --import tsx --test test/*.test.mjs` includes mixed Apply, u
 
 ## Readable previews and direct Changes editing (BL-012 / CP-011)
 
-Requirements cards derive excerpts from the selected revision's declared format. Markdown and HTML use the reader's sanitizer and semantic DOM text boundaries, preserving code identifiers and comparisons. Plain text retains its literal characters and whitespace. Excerpts stop on Unicode word boundaries, show when more content exists, and lead to the full rendered body and original source. Diagram-only previews use the diagram title and text alternative. Rendering never writes source or changes revisions.
+BL-012 introduced format-aware excerpts and focused readers. BL-013, described below, replaces those excerpts with complete inline content on the main Requirements page. Rendering never writes source or changes revisions.
 
 The desktop inspector stays reachable while scrolling a long list. At compact widths, selection opens a complete reader with criteria, parameters, dependencies, tags, Sources, lifecycle and history. Back to results restores the originating item, filters and scroll. Dependencies and Sources use the selected accepted or proposal set.
 
@@ -279,3 +279,11 @@ For recovery, retain the new reader: do not deploy an older reader that cannot u
 Record reads traverse the captured tree in bounded D1 batches, avoiding a separate network round trip for each small group of records. Project index reads use only the root envelopes. Browser synchronization retains its 1.5-second successful polling cadence and allows up to 30 seconds for a complete project response, including download and JSON decoding; initial loads and changed-version polls use the same deadline. Cancellation, backoff, access checks and stale-response protection still apply.
 
 Run `node --import tsx --test test/*.test.mjs`. Set `WORKSPACE_BACKUP_PATH` when running `test/workspace-records.test.mjs` to verify an authorized production backup locally, including exact migration/restart readback, proposal creation, unchanged frozen/history data, and durable receipt replay. Test fixtures also cover incompressible data larger than 2 MB, Unicode, missing legacy fields, unknown fields, project isolation, record corruption, staging/final-transaction failures, and simultaneous retries.
+
+### Complete inline requirements (BL-013 / CP-013)
+
+Every displayed Requirements item shows its complete saved title and rich body, ordered acceptance criteria, parameters, dependencies, tags, and summary relationships. Requirements and non-normative Information use the selected accepted or proposal revision. Authored ellipses, literal plain text, and Unicode remain intact. The optional Inspect control opens the existing focused reader.
+
+The shared safe renderer displays Markdown, HTML, tables, code, and diagrams in document order. Main items grow vertically with their content, including diagrams. Wide tables retain readable columns in labeled, keyboard-focusable scrolling regions; code blocks and diagram scrolling/scale controls are also keyboard accessible. Source disclosures and block-specific diagram failure fallbacks remain available. Links and controls sit outside the Inspect button.
+
+Run `node --test test/full-content.browser.mjs test/reading-editing.browser.mjs` with the loopback preview available. The new suite checks complete saved fields against independent authenticated MCP reads, a 50,000-code-point body, authored punctuation, desktop/compact layouts, keyboard scrolling, multiple Mermaid/DOT diagrams, source relationships, rendering failures, and coherent live proposal updates with dirty-input protection. The existing suite covers direct Changes editing and exact persisted source. Set `PLAYWRIGHT_ROOT` and `CHROME_PATH` when those dependencies are outside the project. Set `WONDERWORKS_TEST_URL` to a built local Worker and `WONDERWORKS_MCP_URL` to a separate local process to repeat verification across processes. Actual results and environment limits are recorded in `public/verification/cp-013.json`.
