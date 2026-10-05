@@ -2,6 +2,8 @@
 
 A standalone requirements platform. Projects contain sections, requirements, dependencies, acceptance criteria, revision history, immutable baselines, and verification evidence. The included Asteroids specification is ordinary project data, not a coupled game implementation.
 
+Licensed under the [MIT License](LICENSE).
+
 ## Choose a deployment
 
 One source supports Sites/D1, account-free local SQLite, and Docker/PostgreSQL. Use Node.js **24.x** and the committed npm lockfile. Local SQLite is for one trusted OS user on macOS or Linux; shared installations use PostgreSQL 17 and built-in accounts. Container targets are Linux amd64/arm64. Runtime settings, authentication, operations, archive limits, and recovery commands are in [the deployment guide](docs/deployment.md). Executed results and unverified environments are recorded against BL-015 in `public/verification/cp-014.json`.
