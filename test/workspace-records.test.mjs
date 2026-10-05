@@ -5,10 +5,12 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomBytes} from 'node:crypto';
 import {Miniflare} from 'miniflare';
-import {buildGraph,prepareStoredRecord,readStoredRecord,migrateWorkspaceStorage,sha256} from '../db/workspace-records.ts';
+import {buildGraph,prepareStoredRecord,readStoredRecord,prepareWorkspaceCommit,StoredRecordSession,migrateWorkspaceStorage,sha256} from '../db/workspace-records.ts';
 import {encodeWorkspace} from '../db/workspace-codec.ts';
 import {McpStore} from '../db/mcp-store.ts';
 import {callTool} from '../lib/mcp/service.ts';
+import {createProposal,editProposalRequirement,submitProposal,reviewProposal} from '../lib/workflow.ts';
+import {captureRequirementHistory} from '../lib/requirement-history.ts';
 const fixture=()=>({id:'records',name:'Preserved 👩🏽‍💻',prefix:'RC',version:7,requirementsVersion:3,sections:[{id:'s',title:'All data',description:''}],requirements:[{id:'RC-001',revision:4,section:'s',title:'Exact source',description:'  <literal> & é\n\t...',criteria:['Keep everything.'],priority:'High',status:'Approved',parameters:{flag:false,count:0,text:''},links:[]}],proposals:[],baselines:[],history:[],repositories:[],evidence:[],legacyExtra:{unknown:['field',null,true,0],empty:{}}});
 async function harness(run){const dir=await mkdtemp(join(tmpdir(),'ww-records-'));const start=()=>new Miniflare({modules:true,script:'export default {fetch(){return new Response("ok")}}',compatibilityDate:'2026-05-15',d1Databases:{DB:'records'},d1Persist:dir});let mf=start();try{let db=await mf.getD1Database('DB');for(const name of ['0000_graceful_terror.sql','0001_lowly_talos.sql','0002_clammy_wasp.sql'])for(const sql of (await readFile(new URL('../drizzle/'+name,import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();await run(db,async()=>{await mf.dispose();mf=start();db=await mf.getD1Database('DB');return db;});}finally{await mf.dispose();await rm(dir,{recursive:true,force:true});}}
 test('bounded records preserve large incompressible strings, unusual keys and array order',async()=>harness(async db=>{
@@ -86,4 +88,70 @@ if(process.env.WORKSPACE_BACKUP_PATH)test('production backup survives migration,
  for(const field of ['requirements','baselines','requirementHistory','evidence','snapshotImplementations','requirementLifecycle'])assert.deepEqual(saved[field],doc[field]);assert.deepEqual(saved.proposals.slice(1),doc.proposals);
  db=await restart();store=new McpStore(db);assert.deepEqual(await store.read(doc.id),saved);assert.deepEqual(await callTool(store,'create_proposal',args,{id:'local-test'},'retry'),written);
  console.log(JSON.stringify({productionCopyVerified:true,version:doc.version,sha256:beforeHash,records:(await db.prepare('SELECT count(*) n FROM workspace_records').first()).n,maxRecordBytes:(await db.prepare('SELECT max(length(CAST(data AS BLOB))) n FROM workspace_records').first()).n}));
+}));
+
+function countedDatabase(db){
+ const calls={total:0};
+ const wrap=statement=>new Proxy(statement,{get(target,key){
+  if(key==='bind')return (...args)=>wrap(target.bind(...args));
+  if(['first','all','run','raw'].includes(key))return async(...args)=>{calls.total++;return target[key](...args);};
+  return Reflect.get(target,key);
+ }});
+ return {calls,db:{prepare:sql=>wrap(db.prepare(sql)),batch:async statements=>{calls.total++;return db.batch(statements);}}};
+}
+test('incremental saves reuse verified records, retain archives and roll back failed publication',async()=>harness(async db=>{
+ const doc={...fixture(),history:Array.from({length:1500},(_,i)=>({id:String(i),message:'Retained history '+i+' '+ 'source '.repeat(100)}))};
+ const stored=await prepareStoredRecord(db,doc.id,doc);
+ await db.batch([db.prepare('INSERT INTO workspaces VALUES(?,?,?)').bind(doc.id,stored.data,doc.version),db.prepare('INSERT INTO workspace_storage_versions(project,version,data,sha256,created_at) VALUES(?,?,?,?,?)').bind(doc.id,doc.version,stored.data,stored.sha256,'original date')]);
+ const tracked=countedDatabase(db),session=new StoredRecordSession(tracked.db,doc.id);
+ const loaded=await readStoredRecord(tracked.db,doc.id,stored.data,session);
+ const next={...loaded,version:doc.version+1,name:'Renamed safely'};
+ tracked.calls.total=0;
+ const prepared=await prepareWorkspaceCommit(tracked.db,doc.id,doc.version,next,session);
+ assert.ok(tracked.calls.total<=5,'Writing a small change must not reread every historical record: '+tracked.calls.total);
+ assert.ok(prepared.next.newRecords<10);
+ const publish=()=>db.batch([prepared.backup,db.prepare('INSERT INTO workspace_storage_versions(project,version,data,sha256,created_at) VALUES(?,?,?,?,?)').bind(doc.id,next.version,prepared.next.data,prepared.next.sha256,'next date'),db.prepare('UPDATE workspaces SET data=?,version=? WHERE id=? AND version=?').bind(prepared.next.data,next.version,doc.id,doc.version)]);
+ await db.prepare("CREATE TRIGGER fail_incremental BEFORE UPDATE ON workspaces BEGIN SELECT RAISE(ABORT,'publication failure'); END").run();
+ await assert.rejects(publish,/publication failure/);
+ assert.equal((await db.prepare('SELECT version FROM workspaces').first()).version,doc.version);
+ assert.equal((await db.prepare('SELECT count(*) n FROM workspace_storage_versions').first()).n,1);
+ await db.prepare('DROP TRIGGER fail_incremental').run();await publish();
+ assert.deepEqual(await readStoredRecord(db,doc.id,prepared.next.data),next);
+ const archive=await db.prepare('SELECT data,created_at FROM workspace_storage_versions WHERE version=?').bind(doc.version).first();
+ assert.equal(archive.created_at,'original date');assert.deepEqual(await readStoredRecord(db,doc.id,archive.data),doc);
+ await assert.rejects(()=>prepareStoredRecord(db,'another-project',next,session),/another project/);
+}));
+test('incremental verification rejects an existing corrupt record and a silently missing staged record',async()=>harness(async db=>{
+ const doc=fixture(),value={...doc,name:'Unique next content'};
+ const graph=await buildGraph(value),bad=[...graph.records].find(([,data])=>data.includes('Unique next content'));
+ await db.prepare('INSERT INTO workspace_records VALUES(?,?,?)').bind(doc.id,bad[0],'{"type":"value","value":"wrong"}').run();
+ await assert.rejects(()=>prepareStoredRecord(db,doc.id,value),/integrity/);
+ await db.prepare('DELETE FROM workspace_records').run();
+ await db.prepare("CREATE TRIGGER ignore_staging BEFORE INSERT ON workspace_records BEGIN SELECT RAISE(IGNORE); END").run();
+ await assert.rejects(()=>prepareStoredRecord(db,doc.id,value),/Missing/);
+}));
+if(process.env.WORKSPACE_BACKUP_PATH)test('Apply and snapshot on the complete production copy preserves history and survives restart',async()=>harness(async(db,restart)=>{
+ const doc=JSON.parse(await readFile(process.env.WORKSPACE_BACKUP_PATH,'utf8'));
+ const proposal=createProposal(doc,{title:'Local apply performance verification'});
+ editProposalRequirement(doc,proposal.id,{...doc.requirements.find(r=>r.kind!=='information'),title:'Local performance verification requirement'});
+ submitProposal(doc,proposal.id);
+ const stored=await prepareStoredRecord(db,doc.id,doc);
+ await db.batch([db.prepare('INSERT INTO workspaces VALUES(?,?,?)').bind(doc.id,stored.data,doc.version),db.prepare('INSERT INTO workspace_storage_versions(project,version,data,sha256,created_at) VALUES(?,?,?,?,?)').bind(doc.id,doc.version,stored.data,stored.sha256,'original')]);
+ const counted=countedDatabase(db),session=new StoredRecordSession(counted.db,doc.id),started=performance.now();
+ const loaded=await readStoredRecord(counted.db,doc.id,stored.data,session),original=structuredClone(loaded);
+ reviewProposal(loaded,proposal.id,{decision:'apply'});captureRequirementHistory(original,loaded,{source:'proposal_review',actor:{id:'local-test'}});
+ loaded.version++;
+ const reads=counted.calls.total;counted.calls.total=0;
+ const prepared=await prepareWorkspaceCommit(counted.db,doc.id,doc.version,loaded,session);
+ await counted.db.batch([prepared.backup,db.prepare('INSERT INTO workspace_storage_versions(project,version,data,sha256,created_at) VALUES(?,?,?,?,?)').bind(doc.id,loaded.version,prepared.next.data,prepared.next.sha256,'next'),db.prepare('UPDATE workspaces SET data=?,version=? WHERE id=? AND version=?').bind(prepared.next.data,loaded.version,doc.id,doc.version)]);
+ const elapsedMs=Math.round(performance.now()-started),writeRoundTrips=counted.calls.total;
+ assert.ok(writeRoundTrips<=8,'Apply must persist only new records: '+writeRoundTrips);
+ assert.equal(loaded.requirementsVersion,doc.requirementsVersion+1);
+ assert.equal(loaded.proposals.find(p=>p.id===proposal.id).status,'Applied');
+ assert.deepEqual(loaded.baselines.slice(1),doc.baselines);
+ assert.deepEqual(loaded.baselines[0].requirements,loaded.requirements);
+ assert.deepEqual(loaded.proposals.slice(1),doc.proposals.slice(1));
+ for(const [id,history] of Object.entries(doc.requirementHistory??{}))for(const event of history.events)assert.ok(loaded.requirementHistory[id].events.some(e=>JSON.stringify(e)===JSON.stringify(event)));
+ db=await restart();assert.deepEqual(await new McpStore(db).read(doc.id),loaded);
+ console.log(JSON.stringify({productionApplyVerified:true,elapsedMs,readRoundTrips:reads,writeRoundTrips,newRecords:prepared.next.newRecords,previousSnapshots:doc.baselines.length}));
 }));
